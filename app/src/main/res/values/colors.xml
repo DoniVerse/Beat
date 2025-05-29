@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="background_dark">#121212</color>
+    <color name="background_darker">#000000</color>
+    <color name="surface">#282828</color>
+    <color name="card_background">#1E1E1E</color>
+
+    <!-- Text Colors -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B3B3B3</color>
+    <color name="text_hint">#808080</color>
+
+    <!-- Standard Colors -->
+
+    <color name="error">#CF6679</color>
+
+    <!-- Accent Colors -->
+    <color name="accent">#1DB954</color>
+    <color name="accent_dark">#168D40</color>
+</resources>

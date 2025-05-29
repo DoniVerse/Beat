@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/player_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center"
+    android:background="#000000">
+
+    <!-- Song Title -->
+    <TextView
+        android:id="@+id/song_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Song Title"
+        android:textColor="#FFFFFF"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- SeekBar -->
+    <SeekBar
+        android:id="@+id/seekBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Playback Buttons -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <ImageButton
+            android:id="@+id/shuffle_btn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_shuffle"
+            android:background="@android:color/transparent"
+            android:contentDescription="Shuffle"
+            android:tint="#FFFFFF" />
+
+        <ImageButton
+            android:id="@+id/prev_btn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_previous"
+            android:background="@android:color/transparent"
+            android:contentDescription="Previous"
+            android:tint="#FFFFFF" />
+
+        <ImageButton
+            android:id="@+id/play_pause_btn"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:src="@drawable/ic_play"
+            android:background="@android:color/transparent"
+            android:contentDescription="Play/Pause"
+            android:tint="#FFFFFF" />
+
+        <ImageButton
+            android:id="@+id/next_btn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_next"
+            android:background="@android:color/transparent"
+            android:contentDescription="Next"
+            android:tint="#FFFFFF" />
+
+        <ImageButton
+            android:id="@+id/repeat_btn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_repeat"
+            android:background="@android:color/transparent"
+            android:contentDescription="Repeat"
+            android:tint="#FFFFFF" />
+    </LinearLayout>
+
+</LinearLayout>
