@@ -34,11 +34,13 @@ public class CircularProfileView extends View {
         textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         textPaint.setColor(Color.WHITE);
         textPaint.setTextAlign(Paint.Align.CENTER);
+        textPaint.setTextSize(24); // Default text size
     }
 
     public void setLetter(String name) {
         if (name != null && !name.isEmpty()) {
             this.letter = name.substring(0, 1).toUpperCase();
+            textPaint.setTextSize(getWidth() * 0.4f); // Adjust text size based on view size
         } else {
             this.letter = "?";
         }
@@ -56,11 +58,13 @@ public class CircularProfileView extends View {
         super.onDraw(canvas);
 
         // Draw circle
-        float radius = size / 2f;
+        float radius = getWidth() / 2f;
         canvas.drawCircle(radius, radius, radius, backgroundPaint);
 
         // Draw text
-        textPaint.setTextSize(size * 0.4f);
+        if (!letter.equals("?")) {
+            textPaint.setTextSize(getWidth() * 0.4f);
+        }
         Rect textBounds = new Rect();
         textPaint.getTextBounds(letter, 0, letter.length(), textBounds);
         float textHeight = textBounds.height();
