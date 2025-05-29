@@ -54,12 +54,12 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
     private TrackAdapter trackAdapter;
     private View searchResultsLayout;
     private CircularProfileView profileView;
-    private TextView welcomeText;
-
+//    private TextView welcomeText;  // Removed welcome text
+    private TextView tracks_header;
     private String userEmail;
     private String username;
-    private static final String PREFS_NAME = "user_prefs";
-    private static final String KEY_EMAIL = "user_email";
+    private static final String PREFS_NAME = "UserPrefs";  // Match LoginActivity's pref name
+    private static final String KEY_EMAIL = "user_email";  // Match LoginActivity's key name
     private BottomNavigationView bottomNavigationView;
     private final List<ApiArtist> popularArtists = Arrays.asList(
             createArtist("Eminem", "https://e-cdns-images.dzcdn.net/images/artist/19cc38f9d69b352f718782e7a22f9c32/250x250-000000-80-0-0.jpg"),
@@ -77,23 +77,23 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
         
         // Initialize views
 
+        tracks_header = view.findViewById(R.id.tracks_header);
         artistsRecyclerView = view.findViewById(R.id.artists_recycler_view);
         tracksRecyclerView = view.findViewById(R.id.tracks_recycler_view);
-        welcomeText = view.findViewById(R.id.welcome_text);
+//        welcomeText = view.findViewById(R.id.welcome_text);  // Removed welcome text
         searchView = view.findViewById(R.id.searchView);
         searchResultsLayout = view.findViewById(R.id.search_results_layout);
         profileView = view.findViewById(R.id.profile_view);
         SharedPreferences prefs = getActivity().getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         userEmail = prefs.getString(KEY_EMAIL, "");
+        Log.d(TAG, "User email from prefs: " + userEmail);
 
         // Set profile circle letter
         if (!userEmail.isEmpty()) {
             String firstLetter = userEmail.substring(0, 1).toUpperCase();
             profileView.setLetter(firstLetter);
-
-            // Set welcome text
-
-            welcomeText.animate().alpha(1f).setDuration(500);
+        } else {
+            profileView.setLetter("?");
         }
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
@@ -234,9 +234,18 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
         requireActivity().finish();
     }
     private void searchTracks(String query) {
+        if (query.trim().isEmpty()) {
+            Toast.makeText(requireActivity(), "Please enter a search term", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Hide only the artists RecyclerView and welcome text
         artistsRecyclerView.setVisibility(View.GONE);
-        welcomeText.setVisibility(View.GONE);
+//        welcomeText.setVisibility(View.GONE);  // Removed welcome text
         searchResultsLayout.setVisibility(View.VISIBLE);
+        tracks_header.setVisibility(View.GONE);
+        // Keep tracksRecyclerView visible since it will show the search results
+        tracksRecyclerView.setVisibility(View.VISIBLE);
 
         Call<mydata> retrofitData = apiInterface.searchTracks(query);
         retrofitData.enqueue(new Callback<mydata>() {
@@ -265,17 +274,17 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
             }
         });
     }
-
     public void onBackPressed() {
         if (searchResultsLayout.getVisibility() == View.VISIBLE) {
-            // If search results are showing, go back to artists view
+            // Show everything back
+            tracks_header.setVisibility(View.VISIBLE);
             searchResultsLayout.setVisibility(View.GONE);
             artistsRecyclerView.setVisibility(View.VISIBLE);
-            welcomeText.setVisibility(View.VISIBLE);
+
+            tracksRecyclerView.setVisibility(View.VISIBLE);
             searchView.setQuery("", false);
             searchView.clearFocus();
         } else {
-            // If on main screen, minimize app instead of going back
             requireActivity().moveTaskToBack(true);
         }
     }

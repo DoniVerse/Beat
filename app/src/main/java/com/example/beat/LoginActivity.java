@@ -1,6 +1,7 @@
 package com.example.beat;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -50,10 +51,11 @@ public class LoginActivity extends AppCompatActivity {
                 User user = musicDao.getUserByEmailAndPassword(email, password);
                 if (user != null) {
                     runOnUiThread(() -> {
-                        // Store user ID in shared preferences
-                        getSharedPreferences("UserPrefs", MODE_PRIVATE)
-                                .edit()
+                        // Store user ID and email in shared preferences
+                        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+                        prefs.edit()
                                 .putInt("userId", user.userId)
+                                .putString("user_email", email)  // Store email
                                 .apply();
                         
                         // Start MainActivity
