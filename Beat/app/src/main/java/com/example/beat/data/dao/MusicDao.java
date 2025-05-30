@@ -48,13 +48,6 @@ public interface MusicDao {
     @Query("SELECT * FROM album")
     List<Album> getAllAlbums();
 
-    // Album operations
-    @Query("SELECT * FROM album WHERE albumId = :albumId")
-    Album getAlbumById(int albumId);
-
-    @Query("SELECT * FROM album WHERE name = :name AND artistId = :artistId")
-    Album getAlbumByNameAndArtist(String name, int artistId);
-
     @Query("SELECT * FROM album WHERE name = :name AND artistId = :artistId")
     Album getAlbumByName(String name, int artistId);
 

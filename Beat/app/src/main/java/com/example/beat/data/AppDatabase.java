@@ -21,7 +21,7 @@ import com.example.beat.data.entities.*;
         LocalVideo.class,
         Playlist.class,
         PlaylistSong.class
-}, version = 2, exportSchema = false)
+}, version = 3, exportSchema = false)
 @TypeConverters({Converters.class})
 
 public abstract class AppDatabase extends RoomDatabase {
@@ -40,6 +40,20 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    private static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // Add albumArtUri column to album table
+            database.execSQL("ALTER TABLE album ADD COLUMN albumArtUri TEXT");
+            // Add songCount and artistArtUri columns to artist table
+            database.execSQL("ALTER TABLE artist ADD COLUMN songCount INTEGER DEFAULT 0");
+            database.execSQL("ALTER TABLE artist ADD COLUMN artistArtUri TEXT");
+            
+            // Add logging to verify migration
+            database.execSQL("INSERT INTO room_master_table (id, identity_hash) VALUES(42, '5847d9b7f27d5a985cf4f20cec42733b')");
+        }
+    };
+
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(
@@ -47,7 +61,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     AppDatabase.class,
                     "beat_database"
             )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build();
         }
         return instance;

@@ -2,26 +2,26 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/navigation_home"
-        android:icon="@drawable/ic_home_new"
+        android:icon="@drawable/ic_home"
         android:title="Home" />
     
     <item
         android:id="@+id/navigation_local"
-        android:icon="@drawable/ic_local_new"
+        android:icon="@drawable/ic_local"
         android:title="Local" />
     
     <item
         android:id="@+id/navigation_playlist"
-        android:icon="@drawable/ic_playlist_new"
+        android:icon="@drawable/ic_playlist"
         android:title="Playlist" />
     
     <item
         android:id="@+id/navigation_album"
-        android:icon="@drawable/ic_album_new"
+        android:icon="@drawable/ic_album"
         android:title="Album" />
     
     <item
         android:id="@+id/navigation_artist"
-        android:icon="@drawable/ic_artist_new"
+        android:icon="@drawable/ic_artist"
         android:title="Artist" />
 </menu>

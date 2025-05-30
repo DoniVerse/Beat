@@ -7,33 +7,26 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.SearchView;
-import androidx.appcompat.widget.SearchView.OnQueryTextListener;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.beat.R;
 import com.example.beat.adapter.SongAdapter;
 import com.example.beat.data.database.AppDatabase;
-import com.example.beat.data.entities.Album;
-import com.example.beat.data.entities.Artist;
 import com.example.beat.data.entities.LocalSong;
 import com.example.beat.data.dao.MusicDao;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class LocalSongsFragment extends Fragment implements OnQueryTextListener {
+public class LocalSongsFragment extends Fragment {
     private AppDatabase database;
     private MusicDao musicDao;
     private int userId;
     private RecyclerView recyclerView;
     private SongAdapter songAdapter;
-    private SearchView searchView;
-    private List<LocalSong> allSongs = new ArrayList<>();
+    private List<LocalSong> allSongs;  // Store all songs for filtering
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -47,16 +40,14 @@ public class LocalSongsFragment extends Fragment implements OnQueryTextListener 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_local_songs, container, false);
-        searchView = view.findViewById(R.id.search_view);
-        searchView.setOnQueryTextListener(this);
-        return view;
+        return inflater.inflate(R.layout.fragment_local_songs, container, false);
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         recyclerView = view.findViewById(R.id.recycler_view);
+        setupSearchView(view);
         setupRecyclerView();
     }
 
@@ -65,6 +56,40 @@ public class LocalSongsFragment extends Fragment implements OnQueryTextListener 
         songAdapter = new SongAdapter(new ArrayList<>());
         recyclerView.setAdapter(songAdapter);
         loadSongs();
+    }
+
+    private void setupSearchView(View view) {
+        androidx.appcompat.widget.SearchView searchView = view.findViewById(R.id.search_view);
+        searchView.setOnQueryTextListener(new androidx.appcompat.widget.SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                if (allSongs != null) {
+                    List<LocalSong> filteredSongs = filterSongs(newText);
+                    songAdapter.updateSongs(filteredSongs);
+                }
+                return true;
+            }
+        });
+    }
+
+    private List<LocalSong> filterSongs(String query) {
+        if (query.isEmpty()) {
+            return new ArrayList<>(allSongs);
+        }
+        query = query.toLowerCase();
+        List<LocalSong> filteredList = new ArrayList<>();
+        for (LocalSong song : allSongs) {
+            if (song.getTitle().toLowerCase().contains(query) ||
+                (song.getArtistId() != null && String.valueOf(song.getArtistId()).contains(query))) {
+                filteredList.add(song);
+            }
+        }
+        return filteredList;
     }
 
     private void loadSongs() {
@@ -77,9 +102,9 @@ public class LocalSongsFragment extends Fragment implements OnQueryTextListener 
                 if (songs == null) {
                     songs = new ArrayList<>();
                 }
-                
-                allSongs = new ArrayList<>(songs); // Store all songs for filtering
-                final List<LocalSong> finalSongs = new ArrayList<>(allSongs);
+
+                allSongs = new ArrayList<>(songs);  // Store all songs
+                final List<LocalSong> finalSongs = new ArrayList<>(songs);
                 requireActivity().runOnUiThread(() -> {
                     songAdapter.updateSongs(finalSongs);
                 });
@@ -91,50 +116,5 @@ public class LocalSongsFragment extends Fragment implements OnQueryTextListener 
 
     public void refreshSongs() {
         loadSongs();
-    }
-
-    @Override
-    public boolean onQueryTextSubmit(String query) {
-        return false;
-    }
-
-    @Override
-    public boolean onQueryTextChange(String newText) {
-        if (newText == null || newText.isEmpty()) {
-            // Show all songs when search is cleared
-            songAdapter.updateSongs(allSongs);
-            return true;
-        }
-
-        // Filter songs based on search query
-        List<LocalSong> filteredSongs = new ArrayList<>();
-        for (LocalSong song : allSongs) {
-            // Search by title
-            if (song.getTitle() != null && song.getTitle().toLowerCase().contains(newText.toLowerCase())) {
-                filteredSongs.add(song);
-                continue;
-            }
-
-            // Search by artist name using artistId
-            if (song.getArtistId() > 0) {
-                Artist artist = musicDao.getArtistById(song.getArtistId());
-                if (artist != null && artist.name != null && 
-                    artist.name.toLowerCase().contains(newText.toLowerCase())) {
-                    filteredSongs.add(song);
-                    continue;
-                }
-            }
-
-            // Search by album name using albumId
-            if (song.getAlbumId() > 0) {
-                Album album = musicDao.getAlbumById(song.getAlbumId());
-                if (album != null && album.name != null && 
-                    album.name.toLowerCase().contains(newText.toLowerCase())) {
-                    filteredSongs.add(song);
-                }
-            }
-        }
-        songAdapter.updateSongs(filteredSongs);
-        return true;
     }
 }

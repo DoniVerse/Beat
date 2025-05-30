@@ -1,49 +1,51 @@
 package com.example.beat.ui;
 
-import android.content.Intent;
-import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.os.Handler;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
-
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
 import com.example.beat.R;
-
-import java.io.IOException;
-import java.util.Locale;
-import java.util.concurrent.TimeUnit;
+import com.example.beat.viewmodel.PlayerViewModel;
+import com.google.android.material.imageview.ShapeableImageView;
 
 public class PlayerActivity extends AppCompatActivity {
-    private ImageView albumArtImageView;
+
+    private PlayerViewModel playerViewModel;
+    private ShapeableImageView albumArtImageView;
     private TextView trackTitleTextView;
     private TextView artistNameTextView;
     private SeekBar seekBar;
     private TextView currentTimeTextView;
     private TextView totalTimeTextView;
     private ImageButton playPauseButton;
-    private ImageButton previousButton;
-    private ImageButton nextButton;
+    private ImageButton previousButton; // Keep for potential future use
+    private ImageButton nextButton;     // Keep for potential future use
+    private ImageButton shuffleButton;  // Keep for potential future use
+    private ImageButton repeatButton;   // Keep for potential future use
     private ImageButton backButton;
-
-    private MediaPlayer mediaPlayer;
-    private Handler handler;
-    private Runnable updateSeekBar;
-    private boolean isPlaying = false;
+    private boolean isUserSeeking = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player);
 
+        // Initialize ViewModel
+        playerViewModel = new ViewModelProvider(this).get(PlayerViewModel.class);
+
         initializeViews();
+        setupObservers();
         setupClickListeners();
-        loadTrackData();
-        setupMediaPlayer();
+
+        // Load track data into ViewModel
+        if (savedInstanceState == null) { // Load only once
+            playerViewModel.loadTrack(getIntent());
+        }
     }
 
     private void initializeViews() {
@@ -56,134 +58,79 @@ public class PlayerActivity extends AppCompatActivity {
         playPauseButton = findViewById(R.id.playPauseButton);
         previousButton = findViewById(R.id.previousButton);
         nextButton = findViewById(R.id.nextButton);
+        shuffleButton = findViewById(R.id.shuffleButton);
+        repeatButton = findViewById(R.id.repeatButton);
         backButton = findViewById(R.id.backButton);
+    }
 
-        handler = new Handler();
+    private void setupObservers() {
+        playerViewModel.getTrackTitle().observe(this, title -> trackTitleTextView.setText(title));
+        playerViewModel.getArtistName().observe(this, artist -> artistNameTextView.setText(artist));
+        playerViewModel.getAlbumArtUrl().observe(this, url -> {
+            if (url != null && !url.isEmpty()) {
+                Glide.with(this)
+                        .load(url)
+                        .placeholder(R.drawable.default_album_art) // Use new default drawable
+                        .error(R.drawable.default_album_art)     // Use new default drawable on error
+                        .into(albumArtImageView);
+            } else {
+                // Load default placeholder if URL is null or empty
+                Glide.with(this)
+                        .load(R.drawable.default_album_art)
+                        .into(albumArtImageView);
+            }
+        });
+
+        playerViewModel.getTotalDuration().observe(this, duration -> seekBar.setMax(duration));
+        playerViewModel.getCurrentPosition().observe(this, position -> {
+            if (!isUserSeeking) {
+                seekBar.setProgress(position);
+            }
+        });
+
+        playerViewModel.getFormattedCurrentTime().observe(this, time -> currentTimeTextView.setText(time));
+        playerViewModel.getFormattedTotalTime().observe(this, time -> totalTimeTextView.setText(time));
+
+        playerViewModel.getPlayPauseButtonRes().observe(this, resId -> playPauseButton.setImageResource(resId));
+
+        // Observe isPlaying if needed for other UI changes, e.g., animations
+        // playerViewModel.getIsPlaying().observe(this, playing -> { /* Update UI based on playing state */ });
     }
 
     private void setupClickListeners() {
-        playPauseButton.setOnClickListener(v -> togglePlayPause());
+        playPauseButton.setOnClickListener(v -> playerViewModel.togglePlayPause());
         backButton.setOnClickListener(v -> finish());
 
+        // Add listeners for other controls if functionality is implemented in ViewModel
+        // previousButton.setOnClickListener(v -> playerViewModel.previousTrack());
+        // nextButton.setOnClickListener(v -> playerViewModel.nextTrack());
+        // shuffleButton.setOnClickListener(v -> playerViewModel.toggleShuffle());
+        // repeatButton.setOnClickListener(v -> playerViewModel.toggleRepeat());
+
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            int userProgress = 0;
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && mediaPlayer != null) {
-                    mediaPlayer.seekTo(progress);
-                    updateCurrentTimeText(progress);
+                if (fromUser) {
+                    userProgress = progress;
+                    // Update current time text immediately while scrubbing
+                    currentTimeTextView.setText(playerViewModel.formatTime(progress));
                 }
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                isUserSeeking = true;
+            }
 
             @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                isUserSeeking = false;
+                playerViewModel.seekTo(userProgress);
+            }
         });
     }
 
-    private void loadTrackData() {
-        Intent intent = getIntent();
-        String title = intent.getStringExtra("title");
-        String artist = intent.getStringExtra("artist");
-        String albumArtUrl = intent.getStringExtra("albumArtUrl");
-
-        trackTitleTextView.setText(title);
-        artistNameTextView.setText(artist);
-
-        if (albumArtUrl != null && !albumArtUrl.isEmpty()) {
-            Glide.with(this)
-                    .load(albumArtUrl)
-                    .placeholder(R.drawable.ic_launcher_background)
-                    .into(albumArtImageView);
-        }
-    }
-
-    private void setupMediaPlayer() {
-        String streamUrl = getIntent().getStringExtra("streamUrl");
-        if (streamUrl == null || streamUrl.isEmpty()) {
-            return;
-        }
-
-        mediaPlayer = new MediaPlayer();
-        try {
-            mediaPlayer.setDataSource(streamUrl);
-            mediaPlayer.prepareAsync();
-
-            mediaPlayer.setOnPreparedListener(mp -> {
-                int duration = mp.getDuration();
-                seekBar.setMax(duration);
-                totalTimeTextView.setText(formatTime(duration));
-                startPlayback();
-            });
-
-            mediaPlayer.setOnCompletionListener(mp -> {
-                playPauseButton.setImageResource(android.R.drawable.ic_media_play);
-                seekBar.setProgress(0);
-                currentTimeTextView.setText(formatTime(0));
-                isPlaying = false;
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void startPlayback() {
-        mediaPlayer.start();
-        isPlaying = true;
-        playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
-        startSeekBarUpdate();
-    }
-
-    private void togglePlayPause() {
-        if (mediaPlayer != null) {
-            if (isPlaying) {
-                mediaPlayer.pause();
-                playPauseButton.setImageResource(android.R.drawable.ic_media_play);
-            } else {
-                mediaPlayer.start();
-                playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
-                startSeekBarUpdate();
-            }
-            isPlaying = !isPlaying;
-        }
-    }
-
-    private void startSeekBarUpdate() {
-        updateSeekBar = new Runnable() {
-            @Override
-            public void run() {
-                if (mediaPlayer != null && isPlaying) {
-                    int currentPosition = mediaPlayer.getCurrentPosition();
-                    seekBar.setProgress(currentPosition);
-                    updateCurrentTimeText(currentPosition);
-                    handler.postDelayed(this, 1000);
-                }
-            }
-        };
-        handler.post(updateSeekBar);
-    }
-
-    private void updateCurrentTimeText(int milliseconds) {
-        currentTimeTextView.setText(formatTime(milliseconds));
-    }
-
-    private String formatTime(int milliseconds) {
-        return String.format(Locale.getDefault(), "%02d:%02d",
-                TimeUnit.MILLISECONDS.toMinutes(milliseconds),
-                TimeUnit.MILLISECONDS.toSeconds(milliseconds) -
-                        TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(milliseconds)));
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
-        if (handler != null) {
-            handler.removeCallbacks(updateSeekBar);
-        }
-    }
+    // No need for onDestroy cleanup for MediaPlayer as it's handled in ViewModel's onCleared
 }
+

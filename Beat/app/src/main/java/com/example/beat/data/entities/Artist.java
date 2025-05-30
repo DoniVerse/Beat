@@ -10,6 +10,8 @@ public class Artist implements Parcelable {
     @PrimaryKey(autoGenerate = true)
     public int artistId;
     public String name;
+    public int songCount;
+    public String artistArtUri;
 
     // Required empty constructor for Room
     public Artist() {}
@@ -23,12 +25,16 @@ public class Artist implements Parcelable {
     protected Artist(Parcel in) {
         artistId = in.readInt();
         name = in.readString();
+        songCount = in.readInt();
+        artistArtUri = in.readString();
     }
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(artistId);
         dest.writeString(name);
+        dest.writeInt(songCount);
+        dest.writeString(artistArtUri);
     }
 
     @Override

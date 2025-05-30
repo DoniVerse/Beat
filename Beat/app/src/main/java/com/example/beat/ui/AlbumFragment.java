@@ -9,8 +9,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.appcompat.widget.SearchView;
-import androidx.appcompat.widget.SearchView.OnQueryTextListener;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.beat.R;
@@ -22,11 +20,12 @@ import com.example.beat.data.entities.LocalSong;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AlbumFragment extends Fragment implements OnQueryTextListener {
+public class AlbumFragment extends Fragment {
     private RecyclerView recyclerView;
     private AlbumAdapter albumAdapter;
     private AppDatabase database;
     private int userId;
+    private List<AlbumWithSongs> allAlbums;  // Store all albums for filtering
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -39,12 +38,16 @@ public class AlbumFragment extends Fragment implements OnQueryTextListener {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_album, container, false);
+        return view;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
         recyclerView = view.findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        SearchView searchView = view.findViewById(R.id.search_view);
-        searchView.setOnQueryTextListener(this);
+        setupSearchView(view);
         setupRecyclerView();
-        return view;
     }
 
     private void setupRecyclerView() {
@@ -53,13 +56,50 @@ public class AlbumFragment extends Fragment implements OnQueryTextListener {
         loadAlbums();
     }
 
+    private void setupSearchView(View view) {
+        androidx.appcompat.widget.SearchView searchView = view.findViewById(R.id.search_view);
+        searchView.setOnQueryTextListener(new androidx.appcompat.widget.SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                if (allAlbums != null) {
+                    List<AlbumWithSongs> filteredAlbums = filterAlbums(newText);
+                    albumAdapter.updateAlbums(filteredAlbums);
+                }
+                return true;
+            }
+        });
+    }
+
+    private List<AlbumWithSongs> filterAlbums(String query) {
+        if (query.isEmpty()) {
+            return new ArrayList<>(allAlbums);
+        }
+        query = query.toLowerCase();
+        List<AlbumWithSongs> filteredList = new ArrayList<>();
+        for (AlbumWithSongs album : allAlbums) {
+            if (album.album.name.toLowerCase().contains(query) ||
+                (album.album.artistId != 0 && String.valueOf(album.album.artistId).contains(query))) {
+                filteredList.add(album);
+            }
+        }
+        return filteredList;
+    }
+
     private void loadAlbums() {
         new Thread(() -> {
             try {
                 database = AppDatabase.getInstance(getContext());
-                List<AlbumWithSongs> albums = database.musicDao().getAlbumsByUser(userId);
-                // Store all albums for filtering
-                allAlbums = new ArrayList<>(albums);
+                final List<AlbumWithSongs> albums = new ArrayList<>();
+                List<AlbumWithSongs> dbAlbums = database.musicDao().getAlbumsByUser(userId);
+                if (dbAlbums != null) {
+                    albums.addAll(dbAlbums);
+                }
+                allAlbums = new ArrayList<>(albums);  // Store all albums
                 requireActivity().runOnUiThread(() -> {
                     albumAdapter.updateAlbums(albums);
                 });
@@ -72,31 +112,4 @@ public class AlbumFragment extends Fragment implements OnQueryTextListener {
     public void refreshAlbums() {
         loadAlbums();
     }
-
-    @Override
-    public boolean onQueryTextSubmit(String query) {
-        return false;
-    }
-
-    @Override
-    public boolean onQueryTextChange(String newText) {
-        if (newText == null || newText.isEmpty()) {
-            // Show all albums when search is cleared
-            albumAdapter.updateAlbums(allAlbums);
-            return true;
-        }
-
-        // Filter albums based on search query
-        List<AlbumWithSongs> filteredAlbums = new ArrayList<>();
-        for (AlbumWithSongs album : allAlbums) {
-            if (album.album != null && album.album.name != null && 
-                album.album.name.toLowerCase().contains(newText.toLowerCase())) {
-                filteredAlbums.add(album);
-            }
-        }
-        albumAdapter.updateAlbums(filteredAlbums);
-        return true;
-    }
-
-    private List<AlbumWithSongs> allAlbums = new ArrayList<>();
 }

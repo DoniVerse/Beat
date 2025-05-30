@@ -13,6 +13,8 @@ import com.example.beat.R;
 import com.example.beat.data.entities.AlbumWithSongs;
 import com.example.beat.data.entities.LocalSong;
 import com.example.beat.ui.AlbumSongsFragment;
+import com.google.android.material.imageview.ShapeableImageView;
+import android.net.Uri;
 
 import java.util.List;
 
@@ -42,7 +44,7 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
         holder.albumName.setText(album.album.name);
         int songCount = album.songs != null ? album.songs.size() : 0;
         holder.songCount.setText(String.format("%d songs", songCount));
-        // No need to bind adapter here, it's handled in ViewHolder constructor
+        holder.bind(album);
     }
 
     @Override
@@ -50,26 +52,32 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
         return albums != null ? albums.size() : 0;
     }
 
-    static class AlbumViewHolder extends RecyclerView.ViewHolder {
-        TextView albumName;
-        TextView songCount;
+    class AlbumViewHolder extends RecyclerView.ViewHolder {
+        private final TextView albumName;
+        private final TextView songCount;
+        private final ShapeableImageView albumArt;
 
-        AlbumViewHolder(@NonNull View itemView) {
+        public AlbumViewHolder(@NonNull View itemView) {
             super(itemView);
             albumName = itemView.findViewById(R.id.album_name);
             songCount = itemView.findViewById(R.id.song_count);
-
+            albumArt = itemView.findViewById(R.id.album_art);
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
-                    RecyclerView parentRecyclerView = (RecyclerView) itemView.getParent();
-                    AlbumAdapter adapter = (AlbumAdapter) parentRecyclerView.getAdapter();
-                    AlbumWithSongs album = adapter.albums.get(position);
-                    AlbumSongsFragment fragment = AlbumSongsFragment.newInstance(album);
-                    ((MainActivity) itemView.getContext()).navigateToFragment(fragment);
+                    AlbumWithSongs clickedAlbum = albums.get(position);
+                    // Handle album click here
                 }
             });
         }
 
-
-    }}
+        public void bind(AlbumWithSongs album) {
+            // Load album art if available, otherwise use default
+            if (album.album != null && album.album.albumArtUri != null) {
+                albumArt.setImageURI(Uri.parse(album.album.albumArtUri));
+            } else {
+                albumArt.setImageResource(R.drawable.default_artist);
+            }
+        }
+    }
+}

@@ -1,19 +1,17 @@
 package com.example.beat.adapter;
 
-import android.content.ContentUris;
 import android.content.Intent;
 import android.net.Uri;
-import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.beat.R;
 import com.example.beat.data.entities.LocalSong;
-import com.example.beat.ui.PlayerActivity;
+import com.example.beat.ui.LocalMusicPlayerActivity;
+import com.google.android.material.imageview.ShapeableImageView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,9 +29,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
 
     public void updateSongs(List<LocalSong> newSongs) {
         this.songs.clear();
-        if (newSongs != null) {
-            this.songs.addAll(newSongs);
-        }
+        this.songs.addAll(newSongs);
         notifyDataSetChanged();
     }
 
@@ -58,20 +54,19 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
 
     class SongViewHolder extends RecyclerView.ViewHolder {
         private final TextView songTitle;
-        private final TextView songArtist; // Changed from songAlbum
-        private final ImageView songImage; // Added ImageView
+        private final TextView songArtist;
+        private final ShapeableImageView songArt;
 
         public SongViewHolder(@NonNull View itemView) {
             super(itemView);
             songTitle = itemView.findViewById(R.id.song_title);
-            songArtist = itemView.findViewById(R.id.song_artist); // Updated ID
-            songImage = itemView.findViewById(R.id.song_image); // Added ID
-
+            songArtist = itemView.findViewById(R.id.song_artist);
+            songArt = itemView.findViewById(R.id.song_art);
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
                     LocalSong clickedSong = songs.get(position);
-                    Intent intent = new Intent(itemView.getContext(), PlayerActivity.class);
+                    Intent intent = new Intent(itemView.getContext(), LocalMusicPlayerActivity.class);
                     intent.putParcelableArrayListExtra("SONG_LIST", (ArrayList<LocalSong>) songs);
                     intent.putExtra("POSITION", position);
                     itemView.getContext().startActivity(intent);
@@ -81,49 +76,18 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
 
         public void bind(LocalSong song) {
             songTitle.setText(song.getTitle());
-
-            // Display Artist Name (or ID if name not available)
-            // TODO: Fetch actual artist name based on artistId if possible
-            if (song.getArtistId() != null && song.getArtistId() > 0) {
-                // Ideally, fetch artist name from DB using ID
-                // For now, displaying ID as placeholder
-                songArtist.setText("Artist ID: " + song.getArtistId());
+            if (song.getArtistId() != null) {
+                songArtist.setText("Artist: " + song.getArtistId());
             } else {
-                songArtist.setText("Unknown Artist");
-            }
-
-            // Load Album Art
-            // TODO: Consider using Glide or Picasso for efficient image loading
-            Uri albumArtUri = null;
-            if (song.getAlbumArtUri() != null) {
-                try {
-                    albumArtUri = Uri.parse(song.getAlbumArtUri());
-                } catch (Exception e) {
-                    // Handle potential parsing error
-                    albumArtUri = null;
-                }
+                songArtist.setText("No Artist");
             }
             
-            // Fallback using album ID if direct URI is not available or invalid
-            if (albumArtUri == null && song.getAlbumId() != null && song.getAlbumId() > 0) {
-                 Uri sArtworkUri = Uri.parse("content://media/external/audio/albumart");
-                 albumArtUri = ContentUris.withAppendedId(sArtworkUri, song.getAlbumId());
-            }
-
-            if (albumArtUri != null) {
-                try {
-                    songImage.setImageURI(albumArtUri);
-                    // Handle cases where setImageURI might fail (e.g., invalid URI, file not found)
-                    if (songImage.getDrawable() == null) {
-                         songImage.setImageResource(R.drawable.default_artist); // Fallback
-                    }
-                } catch (Exception e) {
-                    songImage.setImageResource(R.drawable.default_artist); // Fallback on error
-                }
+            // Load album art if available, otherwise use default
+            if (song.getAlbumArtUri() != null) {
+                songArt.setImageURI(Uri.parse(song.getAlbumArtUri()));
             } else {
-                songImage.setImageResource(R.drawable.default_artist); // Default image
+                songArt.setImageResource(R.drawable.default_artist);
             }
         }
     }
 }
-

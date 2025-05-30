@@ -18,6 +18,8 @@ public class Album implements Parcelable {
     public String releaseYear;
 
     public int artistId;
+    
+    public String albumArtUri;
 
     public Album() {
         // Required empty constructor for Room
@@ -28,6 +30,7 @@ public class Album implements Parcelable {
         name = in.readString();
         releaseYear = in.readString();
         artistId = in.readInt();
+        albumArtUri = in.readString();
     }
 
     public static final Creator<Album> CREATOR = new Creator<Album>() {
@@ -53,5 +56,6 @@ public class Album implements Parcelable {
         dest.writeString(name);
         dest.writeString(releaseYear);
         dest.writeInt(artistId);
+        dest.writeString(albumArtUri);
     }
 }

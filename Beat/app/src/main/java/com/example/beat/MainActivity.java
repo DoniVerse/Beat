@@ -72,8 +72,11 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        // Set initial fragment to LocalSongsFragment
-        navigateToFragment(new LocalSongsFragment());
+        // Set initial fragment to HomeFragment
+        navigateToFragment(new HomeFragment());
+        
+        // Select the home item in the bottom navigation
+        bottomNavigationView.setSelectedItemId(R.id.navigation_home);
 
         // Request storage permissions and initialize media scanning
         if (PermissionManager.hasStoragePermissions(this)) {

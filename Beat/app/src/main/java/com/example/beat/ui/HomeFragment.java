@@ -45,13 +45,17 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
-public class HomeFragment extends Fragment {
+public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickListener {
     private RecyclerView recyclerView;
     private ApiInterface apiInterface;
     private SearchView searchView;
     private RecyclerView artistsRecyclerView;
+    private RecyclerView tracksRecyclerView;
+    private TrackAdapter trackAdapter;
     private View searchResultsLayout;
     private CircularProfileView profileView;
+//    private TextView welcomeText;  // Removed welcome text
+    private TextView tracks_header;
     private String userEmail;
     private String username;
     private static final String PREFS_NAME = "UserPrefs";  // Match LoginActivity's pref name
@@ -73,9 +77,9 @@ public class HomeFragment extends Fragment {
         
         // Initialize views
 
-//        tracks_header = view.findViewById(R.id.tracks_header);
+
         artistsRecyclerView = view.findViewById(R.id.artists_recycler_view);
-//        tracksRecyclerView = view.findViewById(R.id.tracks_recycler_view);
+        tracksRecyclerView = view.findViewById(R.id.tracks_recycler_view);
 //        welcomeText = view.findViewById(R.id.welcome_text);  // Removed welcome text
         searchView = view.findViewById(R.id.searchView);
         searchResultsLayout = view.findViewById(R.id.search_results_layout);
@@ -137,6 +141,11 @@ public class HomeFragment extends Fragment {
         artistsRecyclerView.setLayoutManager(new GridLayoutManager(requireActivity(), 2));
         ApiArtistAdapter artistAdapter = new ApiArtistAdapter(popularArtists, artist -> searchTracks(artist.getName()));
         artistsRecyclerView.setAdapter(artistAdapter);
+
+        // Setup Tracks RecyclerView
+        tracksRecyclerView.setLayoutManager(new LinearLayoutManager(requireActivity()));
+        trackAdapter = new TrackAdapter(new ArrayList<>(), this);
+        tracksRecyclerView.setAdapter(trackAdapter);
     }
 
     private void setupDeezerApi() {
@@ -155,8 +164,36 @@ public class HomeFragment extends Fragment {
         return artist;
     }
 
+    public void onTrackClick(Track track) {
+        if (track.getPreview() != null) {
+            // Launch PlayerActivity
+            Intent intent = new Intent(requireActivity(), PlayerActivity.class);
+            intent.putExtra("title", track.getTitle());
+            intent.putExtra("artist", track.getArtist().getName());
+            intent.putExtra("albumArtUrl", track.getAlbum().getCover());
+            intent.putExtra("streamUrl", track.getPreview());
+            startActivity(intent);
+        } else {
+            Toast.makeText(requireActivity(), "No preview available for this track", Toast.LENGTH_SHORT).show();
+        }
+    }
 
+//    private void setupRecyclerViews() {
+//        // Setup Artists RecyclerView
+//        artistsRecyclerView.setLayoutManager(new GridLayoutManager(requireActivity(), 2));
+//        ApiArtistAdapter artistAdapter = new ApiArtistAdapter(popularArtists, artist -> searchTracks(artist.getName()));
+//        artistsRecyclerView.setAdapter(artistAdapter);
+//
+//        // Setup Tracks RecyclerView
+//        tracksRecyclerView.setLayoutManager(new LinearLayoutManager(requireActivity()));
+//        trackAdapter = new TrackAdapter(new ArrayList<>(), this);
+//        tracksRecyclerView.setAdapter(trackAdapter);
+//    }
 
+//    private void showCreatePlaylistDialog() {
+//        CreatePlaylistDialogFragment dialog = new CreatePlaylistDialogFragment();
+//        dialog.show(getSupportFragmentManager(), "create_playlist_dialog");
+//    }
 
     private void showCreateAlbumDialog() {
         // TODO: Implement album creation dialog
@@ -206,9 +243,9 @@ public class HomeFragment extends Fragment {
         artistsRecyclerView.setVisibility(View.GONE);
 //        welcomeText.setVisibility(View.GONE);  // Removed welcome text
         searchResultsLayout.setVisibility(View.VISIBLE);
-//        tracks_header.setVisibility(View.GONE);
+        tracks_header.setVisibility(View.GONE);
         // Keep tracksRecyclerView visible since it will show the search results
-//        tracksRecyclerView.setVisibility(View.VISIBLE);
+        tracksRecyclerView.setVisibility(View.VISIBLE);
 
         Call<mydata> retrofitData = apiInterface.searchTracks(query);
         retrofitData.enqueue(new Callback<mydata>() {
@@ -217,11 +254,11 @@ public class HomeFragment extends Fragment {
                 if (response.isSuccessful() && response.body() != null) {
                     mydata data = response.body();
                     if (data.getData() != null && !data.getData().isEmpty()) {
-//                        trackAdapter.updateTracks(data.getData());
+                        trackAdapter.updateTracks(data.getData());
                         Log.d(TAG, "Found " + data.getData().size() + " tracks");
                     } else {
                         Toast.makeText(requireActivity(), "No tracks found", Toast.LENGTH_SHORT).show();
-//                        trackAdapter.updateTracks(new ArrayList<>());
+                        trackAdapter.updateTracks(new ArrayList<>());
                     }
                 } else {
                     String errorMessage = "Error: " + response.code();
@@ -240,11 +277,11 @@ public class HomeFragment extends Fragment {
     public void onBackPressed() {
         if (searchResultsLayout.getVisibility() == View.VISIBLE) {
             // Show everything back
-//            tracks_header.setVisibility(View.VISIBLE);
+            tracks_header.setVisibility(View.VISIBLE);
             searchResultsLayout.setVisibility(View.GONE);
             artistsRecyclerView.setVisibility(View.VISIBLE);
 
-//            tracksRecyclerView.setVisibility(View.VISIBLE);
+            tracksRecyclerView.setVisibility(View.VISIBLE);
             searchView.setQuery("", false);
             searchView.clearFocus();
         } else {

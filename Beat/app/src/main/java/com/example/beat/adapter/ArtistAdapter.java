@@ -8,6 +8,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.beat.R;
 import com.example.beat.data.entities.Artist;
+import com.google.android.material.imageview.ShapeableImageView;
+import android.net.Uri;
 import java.util.List;
 
 public class ArtistAdapter extends RecyclerView.Adapter<ArtistAdapter.ArtistViewHolder> {
@@ -44,19 +46,34 @@ public class ArtistAdapter extends RecyclerView.Adapter<ArtistAdapter.ArtistView
 
     class ArtistViewHolder extends RecyclerView.ViewHolder {
         private final TextView artistName;
+        private final TextView songCount;
+        private final ShapeableImageView artistArt;
 
         public ArtistViewHolder(@NonNull View itemView) {
             super(itemView);
             artistName = itemView.findViewById(R.id.artist_name);
+            songCount = itemView.findViewById(R.id.song_count);
+            artistArt = itemView.findViewById(R.id.artist_art);
             itemView.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onArtistClick(artists.get(getAdapterPosition()));
+                int position = getAdapterPosition();
+                if (position != RecyclerView.NO_POSITION) {
+                    listener.onArtistClick(artists.get(position));
                 }
             });
         }
 
         public void bind(Artist artist) {
-            artistName.setText(artist.name);
+            if (artist != null) {
+                artistName.setText(artist.name);
+                songCount.setText(String.format("%d songs", artist.songCount));
+            }
+            
+            // Load artist art if available, otherwise use default
+            if (artist != null && artist.artistArtUri != null) {
+                artistArt.setImageURI(Uri.parse(artist.artistArtUri));
+            } else {
+                artistArt.setImageResource(R.drawable.default_artist);
+            }
         }
     }
 }
