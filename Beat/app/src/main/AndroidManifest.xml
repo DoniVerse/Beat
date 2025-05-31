@@ -59,6 +59,11 @@
             android:enabled="true"
             android:foregroundServiceType="mediaPlayback"
             android:exported="false" />
+        <service 
+            android:name=".services.ApiMusicService"
+            android:enabled="true"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="false" />
     </application>
 
 </manifest>
