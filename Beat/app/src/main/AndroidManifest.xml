@@ -4,6 +4,7 @@
 
     <!-- Required permissions for media scanning -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <!-- Required for network operations -->
@@ -12,7 +13,10 @@
     <!-- For Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
     <application
+        android:name=".BeatApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -21,6 +25,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Beat"
+        android:largeHeap="true"
         tools:targetApi="31">
         <activity
             android:name=".MainActivity"
@@ -36,7 +41,10 @@
             android:exported="false" />
         <activity
             android:name=".ui.LocalMusicPlayerActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:excludeFromRecents="false" />
         <activity
             android:name=".ui.ArtistSongsActivity"
             android:exported="false" />
@@ -45,6 +53,11 @@
             android:exported="false" />
         <activity
             android:name=".SignUpActivity"
+            android:exported="false" />
+        <service 
+            android:name=".services.MusicService"
+            android:enabled="true"
+            android:foregroundServiceType="mediaPlayback"
             android:exported="false" />
     </application>
 

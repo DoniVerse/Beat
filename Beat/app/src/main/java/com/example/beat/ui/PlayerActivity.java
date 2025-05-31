@@ -5,10 +5,12 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.beat.R;
 import com.example.beat.viewmodel.PlayerViewModel;
 import com.google.android.material.imageview.ShapeableImageView;
@@ -23,10 +25,10 @@ public class PlayerActivity extends AppCompatActivity {
     private TextView currentTimeTextView;
     private TextView totalTimeTextView;
     private ImageButton playPauseButton;
-    private ImageButton previousButton; // Keep for potential future use
-    private ImageButton nextButton;     // Keep for potential future use
-    private ImageButton shuffleButton;  // Keep for potential future use
-    private ImageButton repeatButton;   // Keep for potential future use
+    private ImageButton previousButton;
+    private ImageButton nextButton;
+    private ImageButton shuffleButton;
+    private ImageButton repeatButton;
     private ImageButton backButton;
     private boolean isUserSeeking = false;
 
@@ -43,8 +45,14 @@ public class PlayerActivity extends AppCompatActivity {
         setupClickListeners();
 
         // Load track data into ViewModel
-        if (savedInstanceState == null) { // Load only once
-            playerViewModel.loadTrack(getIntent());
+        if (savedInstanceState == null && getIntent() != null) {
+            try {
+                playerViewModel.loadTrack(getIntent());
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Error loading track: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                finish();
+            }
         }
     }
 
@@ -64,48 +72,62 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void setupObservers() {
-        playerViewModel.getTrackTitle().observe(this, title -> trackTitleTextView.setText(title));
-        playerViewModel.getArtistName().observe(this, artist -> artistNameTextView.setText(artist));
+        playerViewModel.getTrackTitle().observe(this, title -> 
+            trackTitleTextView.setText(title != null ? title : "Unknown Title"));
+        
+        playerViewModel.getArtistName().observe(this, artist -> 
+            artistNameTextView.setText(artist != null ? artist : "Unknown Artist"));
+        
         playerViewModel.getAlbumArtUrl().observe(this, url -> {
-            if (url != null && !url.isEmpty()) {
-                Glide.with(this)
-                        .load(url)
-                        .placeholder(R.drawable.default_album_art) // Use new default drawable
-                        .error(R.drawable.default_album_art)     // Use new default drawable on error
-                        .into(albumArtImageView);
-            } else {
-                // Load default placeholder if URL is null or empty
-                Glide.with(this)
-                        .load(R.drawable.default_album_art)
-                        .into(albumArtImageView);
+            try {
+                if (url != null && !url.isEmpty()) {
+                    Glide.with(this)
+                            .load(url)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            .placeholder(R.drawable.default_album_art)
+                            .error(R.drawable.default_album_art)
+                            .into(albumArtImageView);
+                } else {
+                    Glide.with(this)
+                            .load(R.drawable.default_album_art)
+                            .into(albumArtImageView);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                albumArtImageView.setImageResource(R.drawable.default_album_art);
             }
         });
 
-        playerViewModel.getTotalDuration().observe(this, duration -> seekBar.setMax(duration));
+        playerViewModel.getTotalDuration().observe(this, duration -> {
+            if (duration != null) seekBar.setMax(duration);
+        });
+        
         playerViewModel.getCurrentPosition().observe(this, position -> {
-            if (!isUserSeeking) {
+            if (!isUserSeeking && position != null) {
                 seekBar.setProgress(position);
             }
         });
 
-        playerViewModel.getFormattedCurrentTime().observe(this, time -> currentTimeTextView.setText(time));
-        playerViewModel.getFormattedTotalTime().observe(this, time -> totalTimeTextView.setText(time));
+        playerViewModel.getFormattedCurrentTime().observe(this, time -> 
+            currentTimeTextView.setText(time != null ? time : "00:00"));
+        
+        playerViewModel.getFormattedTotalTime().observe(this, time -> 
+            totalTimeTextView.setText(time != null ? time : "00:00"));
 
-        playerViewModel.getPlayPauseButtonRes().observe(this, resId -> playPauseButton.setImageResource(resId));
+        playerViewModel.getPlayPauseButtonRes().observe(this, resId -> {
+            if (resId != null) playPauseButton.setImageResource(resId);
+        });
 
-        // Observe isPlaying if needed for other UI changes, e.g., animations
-        // playerViewModel.getIsPlaying().observe(this, playing -> { /* Update UI based on playing state */ });
+        playerViewModel.getError().observe(this, error -> {
+            if (error != null && !error.isEmpty()) {
+                Toast.makeText(this, error, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void setupClickListeners() {
         playPauseButton.setOnClickListener(v -> playerViewModel.togglePlayPause());
         backButton.setOnClickListener(v -> finish());
-
-        // Add listeners for other controls if functionality is implemented in ViewModel
-        // previousButton.setOnClickListener(v -> playerViewModel.previousTrack());
-        // nextButton.setOnClickListener(v -> playerViewModel.nextTrack());
-        // shuffleButton.setOnClickListener(v -> playerViewModel.toggleShuffle());
-        // repeatButton.setOnClickListener(v -> playerViewModel.toggleRepeat());
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             int userProgress = 0;
@@ -113,7 +135,6 @@ public class PlayerActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
                     userProgress = progress;
-                    // Update current time text immediately while scrubbing
                     currentTimeTextView.setText(playerViewModel.formatTime(progress));
                 }
             }
@@ -131,6 +152,10 @@ public class PlayerActivity extends AppCompatActivity {
         });
     }
 
-    // No need for onDestroy cleanup for MediaPlayer as it's handled in ViewModel's onCleared
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        playerViewModel.releasePlayer();
+    }
 }
 

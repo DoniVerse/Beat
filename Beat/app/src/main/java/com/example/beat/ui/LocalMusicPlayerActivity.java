@@ -1,11 +1,17 @@
 package com.example.beat.ui;
 
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.media.MediaPlayer;
-import android.net.Uri;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
+import android.util.Log;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -14,23 +20,32 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.example.beat.R;
 import com.example.beat.data.database.AppDatabase;
+import com.example.beat.data.entities.Artist;
 import com.example.beat.data.entities.LocalSong;
 import com.example.beat.data.entities.Playlist;
 import com.example.beat.data.dao.PlaylistDao;
 import com.example.beat.data.entities.PlaylistSong;
+import com.example.beat.services.MusicService;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 public class LocalMusicPlayerActivity extends AppCompatActivity {
+    private static final String TAG = "LocalMusicPlayer";
+
     private TextView songTitle;
     private ImageView albumArtImageView;
     private TextView currentTimeTextView;
@@ -41,221 +56,452 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
     private LocalSong currentSong;
     private List<LocalSong> songList;
     private int currentPosition = 0;
-    private MediaPlayer mediaPlayer;
-    private Handler handler = new Handler();
     private boolean isPlaying = false;
     private boolean isShuffle = false;
     private boolean isRepeat = false;
+    private Handler handler;
+    private int userId;
 
-    private Runnable updateSeekBarRunnable = new Runnable() {
+    private MusicService musicService;
+    private boolean serviceBound = false;
+    private boolean isActivityVisible = true;
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
-        public void run() {
-            if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                seekBar.setProgress(mediaPlayer.getCurrentPosition());
-                currentTimeTextView.setText(formatTime(mediaPlayer.getCurrentPosition()));
-                handler.postDelayed(this, 1000);
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            try {
+                MusicService.LocalBinder binder = (MusicService.LocalBinder) service;
+                musicService = binder.getService();
+                serviceBound = true;
+                Log.d(TAG, "Service connected successfully");
+                
+                // Set up callback for notification controls
+                musicService.setCallback(new MusicService.ServiceCallback() {
+                    @Override
+                    public void onNext() {
+                        playNext();
+                    }
+
+                    @Override
+                    public void onPrevious() {
+                        playPrevious();
+                    }
+                });
+                
+                // Start playing the current song if one is loaded
+                if (currentSong != null) {
+                    musicService.playSong(currentSong);
+                    updatePlayPauseButton(true);
+                    isPlaying = true;
+                    startProgressUpdates();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error connecting to service: " + e.getMessage());
+                Toast.makeText(LocalMusicPlayerActivity.this, 
+                    "Error connecting to music service", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            musicService = null;
+            serviceBound = false;
+            Log.d(TAG, "Service disconnected");
+        }
+    };
+
+    private BroadcastReceiver playbackReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            try {
+                if (intent.getAction() != null && intent.getAction().equals("PLAYBACK_STATUS")) {
+                    boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
+                    updatePlayPauseButton(isPlaying);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error in playback receiver: " + e.getMessage());
             }
         }
     };
 
-    private int userId;
+    private Runnable updateSeekBarRunnable = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                if (musicService != null && isPlaying && isActivityVisible) {
+                    int currentPosition = musicService.getCurrentPosition();
+                    seekBar.setProgress(currentPosition);
+                    currentTimeTextView.setText(formatTime(currentPosition));
+                    handler.postDelayed(this, 1000);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error updating seekbar: " + e.getMessage());
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_player_local);
-
-        // Get user ID
-        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-        userId = prefs.getInt("userId", -1);
-
-        if (userId == -1) {
-            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-
-        songTitle = findViewById(R.id.song_title);
-        albumArtImageView = findViewById(R.id.album_art);
-        currentTimeTextView = findViewById(R.id.current_time);
-        totalTimeTextView = findViewById(R.id.total_time);
-        seekBar = findViewById(R.id.seekBar);
-        playPauseBtn = findViewById(R.id.play_pause_btn);
-        prevBtn = findViewById(R.id.prev_btn);
-        nextBtn = findViewById(R.id.next_btn);
-        shuffleBtn = findViewById(R.id.shuffle_btn);
-        repeatBtn = findViewById(R.id.repeat_btn);
-        addToPlaylistBtn = findViewById(R.id.add_to_playlist_btn);
-
-        Intent intent = getIntent();
-        if (intent != null) {
-            ArrayList<LocalSong> songs = intent.getParcelableArrayListExtra("SONG_LIST");
-            if (songs != null && !songs.isEmpty()) {
-                int position = intent.getIntExtra("POSITION", 0);
-                currentSong = songs.get(position);
-                songList = songs;
-                currentPosition = position;
-                updateSongInfo();
-                setupPlayer();
-            }
-        }
-
-        prevBtn.setOnClickListener(v -> playPrevious());
-        nextBtn.setOnClickListener(v -> playNext());
-        playPauseBtn.setOnClickListener(v -> togglePlayPause());
-        shuffleBtn.setOnClickListener(v -> isShuffle = !isShuffle);
-        repeatBtn.setOnClickListener(v -> isRepeat = !isRepeat);
+        setContentView(R.layout.activity_local_music_player);
         
-        addToPlaylistBtn.setOnClickListener(v -> showAddToPlaylistDialog());
+        // Handle launch from notification
+        if (getIntent().getBooleanExtra("FROM_NOTIFICATION", false)) {
+            // Just restore the activity, don't recreate the player
+            if (savedInstanceState != null) {
+                return;
+            }
+        }
 
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && mediaPlayer != null) {
-                    mediaPlayer.seekTo(progress);
+        try {
+            handler = new Handler();
+
+            // Register broadcast receiver with error handling
+            try {
+                unregisterReceiver(playbackReceiver);
+            } catch (IllegalArgumentException e) {
+                // Receiver not registered, ignore
+            }
+            IntentFilter filter = new IntentFilter("PLAYBACK_STATUS");
+            registerReceiver(playbackReceiver, filter);
+
+            // Get user ID
+            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+            userId = prefs.getInt("userId", -1);
+
+            if (userId == -1) {
+                Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+
+            initializeViews();
+            setupClickListeners();
+
+            Intent intent = getIntent();
+            if (intent != null) {
+                ArrayList<LocalSong> songs = intent.getParcelableArrayListExtra("SONG_LIST");
+                if (songs != null && !songs.isEmpty()) {
+                    songList = songs;
+                    currentPosition = intent.getIntExtra("POSITION", 0);
+                    if (currentPosition >= 0 && currentPosition < songList.size()) {
+                        currentSong = songList.get(currentPosition);
+                        updateSongInfo();
+                        
+                        // Bind to the music service with error handling
+                        try {
+                            Intent serviceIntent = new Intent(this, MusicService.class);
+                            if (!bindService(serviceIntent, serviceConnection, BIND_AUTO_CREATE)) {
+                                Log.e(TAG, "Failed to bind to service");
+                                Toast.makeText(this, "Failed to start music service", Toast.LENGTH_SHORT).show();
+                            }
+                            startService(serviceIntent);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error binding to service: " + e.getMessage());
+                            Toast.makeText(this, "Error starting music service", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        throw new IllegalArgumentException("Invalid song position");
+                    }
+                } else {
+                    throw new IllegalArgumentException("No songs provided");
                 }
+            } else {
+                throw new IllegalArgumentException("No intent data provided");
             }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onCreate: " + e.getMessage());
+            Toast.makeText(this, "Error starting player: " + e.getMessage(), 
+                Toast.LENGTH_SHORT).show();
+            finish();
+        }
+    }
 
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                handler.removeCallbacks(updateSeekBarRunnable);
-            }
+    private void initializeViews() {
+        try {
+            songTitle = findViewById(R.id.song_title);
+            albumArtImageView = findViewById(R.id.album_art);
+            currentTimeTextView = findViewById(R.id.current_time);
+            totalTimeTextView = findViewById(R.id.total_time);
+            seekBar = findViewById(R.id.seekBar);
+            playPauseBtn = findViewById(R.id.play_pause_btn);
+            prevBtn = findViewById(R.id.prev_btn);
+            nextBtn = findViewById(R.id.next_btn);
+            shuffleBtn = findViewById(R.id.shuffle_btn);
+            repeatBtn = findViewById(R.id.repeat_btn);
+            addToPlaylistBtn = findViewById(R.id.add_to_playlist_btn);
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing views: " + e.getMessage());
+            throw e;
+        }
+    }
 
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                handler.post(updateSeekBarRunnable);
-            }
-        });
+    private void setupClickListeners() {
+        try {
+            playPauseBtn.setOnClickListener(v -> togglePlayPause());
+            prevBtn.setOnClickListener(v -> playPrevious());
+            nextBtn.setOnClickListener(v -> playNext());
+            shuffleBtn.setOnClickListener(v -> toggleShuffle());
+            repeatBtn.setOnClickListener(v -> toggleRepeat());
+            addToPlaylistBtn.setOnClickListener(v -> showAddToPlaylistDialog());
+
+            seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if (fromUser && musicService != null) {
+                        musicService.seekTo(progress);
+                        currentTimeTextView.setText(formatTime(progress));
+                    }
+                }
+
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) {
+                    stopProgressUpdates();
+                }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
+                    if (isPlaying) {
+                        startProgressUpdates();
+                    }
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up click listeners: " + e.getMessage());
+            throw e;
+        }
     }
 
     private void updateSongInfo() {
-        if (currentSong != null) {
+        if (currentSong == null) {
+            Log.e(TAG, "Attempted to update info for null song");
+            return;
+        }
+
+        try {
             songTitle.setText(currentSong.getTitle());
 
-            // Load album art using Glide
             String albumArtUri = currentSong.getAlbumArtUri();
             if (albumArtUri != null && !albumArtUri.isEmpty()) {
-                try {
-                    Glide.with(this)
-                            .load(albumArtUri)
-                            .placeholder(R.drawable.default_artist)
-                            .error(R.drawable.default_artist)
-                            .transition(DrawableTransitionOptions.withCrossFade())
-                            .into(albumArtImageView);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    albumArtImageView.setImageResource(R.drawable.default_artist);
-                }
+                Glide.with(this)
+                        .load(albumArtUri)
+                        .error(R.drawable.default_artist)
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .transition(DrawableTransitionOptions.withCrossFade())
+                        .into(new CustomTarget<Drawable>() {
+                            @Override
+                            public void onResourceReady(@NonNull Drawable resource, 
+                                    @Nullable Transition<? super Drawable> transition) {
+                                if (isActivityVisible) {
+                                    albumArtImageView.setImageDrawable(resource);
+                                }
+                            }
+
+                            @Override
+                            public void onLoadCleared(@Nullable Drawable placeholder) {
+                                if (isActivityVisible) {
+                                    albumArtImageView.setImageResource(R.drawable.default_artist);
+                                }
+                            }
+                        });
             } else {
                 albumArtImageView.setImageResource(R.drawable.default_artist);
             }
 
-            if (mediaPlayer != null) {
-                seekBar.setMax(mediaPlayer.getDuration());
-                totalTimeTextView.setText(formatTime(mediaPlayer.getDuration()));
-                currentTimeTextView.setText("0:00");
+            if (musicService != null) {
+                int duration = musicService.getDuration();
+                seekBar.setMax(duration);
+                totalTimeTextView.setText(formatTime(duration));
+                currentTimeTextView.setText(formatTime(musicService.getCurrentPosition()));
             }
-        }
-    }
-
-    private void setupPlayer() {
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-        }
-
-        if (currentSong != null) {
-            String filePath = currentSong.getFilePath();
-
-            try {
-                mediaPlayer = new MediaPlayer();
-                mediaPlayer.setDataSource(this, Uri.parse(filePath));
-                mediaPlayer.prepare();
-                mediaPlayer.start();
-                isPlaying = true;
-                playPauseBtn.setImageResource(R.drawable.ic_pause);
-                updateSongInfo();
-                seekBar.setProgress(0);
-                handler.post(updateSeekBarRunnable);
-
-                mediaPlayer.setOnCompletionListener(mp -> {
-                    if (isRepeat) {
-                        setupPlayer();
-                    } else {
-                        playNext();
-                    }
-                });
-
-                seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                        if (fromUser && mediaPlayer != null) {
-                            mediaPlayer.seekTo(progress);
-                        }
-                    }
-
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) {
-                        handler.removeCallbacks(updateSeekBarRunnable);
-                    }
-
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) {
-                        handler.post(updateSeekBarRunnable);
-                    }
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-                songTitle.setText("Error playing song");
-                if (mediaPlayer != null) {
-                    mediaPlayer.release();
-                    mediaPlayer = null;
-                }
-            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error updating song info: " + e.getMessage());
+            Toast.makeText(this, "Error updating song information", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void togglePlayPause() {
-        if (mediaPlayer != null) {
-            if (mediaPlayer.isPlaying()) {
-                mediaPlayer.pause();
-                isPlaying = false;
-                playPauseBtn.setImageResource(R.drawable.ic_play);
-            } else {
-                mediaPlayer.start();
-                isPlaying = true;
-                playPauseBtn.setImageResource(R.drawable.ic_pause);
+        try {
+            if (musicService != null) {
+                if (isPlaying) {
+                    musicService.pauseSong();
+                    stopProgressUpdates();
+                } else {
+                    musicService.resumeSong();
+                    startProgressUpdates();
+                }
+                isPlaying = !isPlaying;
+                updatePlayPauseButton(isPlaying);
             }
+        } catch (Exception e) {
+            Log.e(TAG, "Error toggling playback: " + e.getMessage());
+            Toast.makeText(this, "Error controlling playback", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void startProgressUpdates() {
+        handler.removeCallbacks(updateSeekBarRunnable);
+        handler.post(updateSeekBarRunnable);
+    }
+
+    private void stopProgressUpdates() {
+        handler.removeCallbacks(updateSeekBarRunnable);
+    }
+
+    private void updatePlayPauseButton(boolean playing) {
+        if (isActivityVisible) {
+            playPauseBtn.setImageResource(playing ? R.drawable.ic_pause : R.drawable.ic_play);
         }
     }
 
     private void playPrevious() {
-        if (songList != null && !songList.isEmpty()) {
-            currentPosition = (currentPosition - 1 + songList.size()) % songList.size();
-            currentSong = songList.get(currentPosition);
-            setupPlayer();
+        try {
+            if (songList != null && !songList.isEmpty()) {
+                currentPosition = (currentPosition - 1 + songList.size()) % songList.size();
+                currentSong = songList.get(currentPosition);
+                updateSongInfo();
+                if (musicService != null) {
+                    musicService.playSong(currentSong);
+                    isPlaying = true;
+                    updatePlayPauseButton(true);
+                    startProgressUpdates();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error playing previous song: " + e.getMessage());
+            Toast.makeText(this, "Error playing previous song", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void playNext() {
-        if (songList != null && !songList.isEmpty()) {
-            if (isShuffle) {
-                currentPosition = new Random().nextInt(songList.size());
-            } else {
-                currentPosition = (currentPosition + 1) % songList.size();
+        try {
+            if (songList != null && !songList.isEmpty()) {
+                if (isShuffle) {
+                    currentPosition = new Random().nextInt(songList.size());
+                } else {
+                    currentPosition = (currentPosition + 1) % songList.size();
+                }
+                currentSong = songList.get(currentPosition);
+                updateSongInfo();
+                if (musicService != null) {
+                    musicService.playSong(currentSong);
+                    isPlaying = true;
+                    updatePlayPauseButton(true);
+                    startProgressUpdates();
+                }
             }
-            currentSong = songList.get(currentPosition);
-            setupPlayer();
+        } catch (Exception e) {
+            Log.e(TAG, "Error playing next song: " + e.getMessage());
+            Toast.makeText(this, "Error playing next song", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void toggleShuffle() {
         isShuffle = !isShuffle;
         shuffleBtn.setImageResource(isShuffle ? R.drawable.ic_shuffle_on : R.drawable.ic_shuffle);
+        Toast.makeText(this, "Shuffle " + (isShuffle ? "enabled" : "disabled"), 
+            Toast.LENGTH_SHORT).show();
     }
 
     private void toggleRepeat() {
         isRepeat = !isRepeat;
         repeatBtn.setImageResource(isRepeat ? R.drawable.ic_repeat_on : R.drawable.ic_repeat);
+        Toast.makeText(this, "Repeat " + (isRepeat ? "enabled" : "disabled"), 
+            Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        isActivityVisible = true;
+        if (isPlaying) {
+            startProgressUpdates();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        isActivityVisible = false;
+        stopProgressUpdates();
+    }
+
+    @Override
+    protected void onDestroy() {
+        try {
+            super.onDestroy();
+            stopProgressUpdates();
+            
+            // Hide mini player when activity is destroyed
+            Intent updateIntent = new Intent("MINI_PLAYER_UPDATE");
+            updateIntent.putExtra("show", false);
+            sendBroadcast(updateIntent);
+            
+            if (serviceBound) {
+                try {
+                    unbindService(serviceConnection);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error unbinding service: " + e.getMessage());
+                }
+                serviceBound = false;
+            }
+            
+            try {
+                unregisterReceiver(playbackReceiver);
+            } catch (IllegalArgumentException e) {
+                // Receiver not registered, ignore
+            }
+            
+            handler = null;
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onDestroy: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Send broadcast to show mini player
+        Intent updateIntent = new Intent("MINI_PLAYER_UPDATE");
+        updateIntent.putExtra("title", currentSong.getTitle());
+        updateIntent.putExtra("artist", getArtistName(currentSong.getArtistId()));
+        updateIntent.putExtra("albumArtUri", currentSong.getAlbumArtUri());
+        updateIntent.putExtra("show", true);
+        sendBroadcast(updateIntent);
+
+        // Minimize the activity
+        moveTaskToBack(true);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Glide.with(this).clear(albumArtImageView);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        
+        // If launched from notification, bring activity to front
+        if (intent.getBooleanExtra("FROM_NOTIFICATION", false)) {
+            if (musicService != null) {
+                updateSongInfo();
+                updatePlayPauseButton(musicService.isPlaying());
+            }
+        }
+    }
+ 
+    private String formatTime(int milliseconds) {
+        try {
+            int seconds = milliseconds / 1000;
+            int minutes = seconds / 60;
+            seconds = seconds % 60;
+            return String.format("%d:%02d", minutes, seconds);
+        } catch (Exception e) {
+            Log.e(TAG, "Error formatting time: " + e.getMessage());
+            return "0:00";
+        }
     }
 
     private void showAddToPlaylistDialog() {
@@ -379,18 +625,21 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         }).start();
     }
 
-    private String formatTime(int milliseconds) {
-        int seconds = (milliseconds / 1000) % 60;
-        int minutes = (milliseconds / (1000 * 60)) % 60;
-        return String.format("%d:%02d", minutes, seconds);
+    private boolean isPlaying() {
+        return musicService != null && musicService.isPlaying();
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-            handler.removeCallbacks(updateSeekBarRunnable);
+    private String getArtistName(Integer artistId) {
+        if (artistId == null) {
+            return "Unknown Artist";
+        }
+        try {
+            AppDatabase db = AppDatabase.getInstance(this);
+            Artist artist = db.musicDao().getArtistById(artistId);
+            return artist != null ? artist.name : "Unknown Artist";
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting artist name: " + e.getMessage());
+            return "Unknown Artist";
         }
     }
 }

@@ -54,12 +54,11 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
     private TrackAdapter trackAdapter;
     private View searchResultsLayout;
     private CircularProfileView profileView;
-//    private TextView welcomeText;  // Removed welcome text
     private TextView tracks_header;
     private String userEmail;
     private String username;
-    private static final String PREFS_NAME = "UserPrefs";  // Match LoginActivity's pref name
-    private static final String KEY_EMAIL = "user_email";  // Match LoginActivity's key name
+    private static final String PREFS_NAME = "UserPrefs";
+    private static final String KEY_EMAIL = "user_email";
     private BottomNavigationView bottomNavigationView;
     private final List<ApiArtist> popularArtists = Arrays.asList(
             createArtist("Eminem", "https://e-cdns-images.dzcdn.net/images/artist/19cc38f9d69b352f718782e7a22f9c32/250x250-000000-80-0-0.jpg"),
@@ -76,14 +75,13 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
         View view = inflater.inflate(R.layout.fragment_home, container, false);
         
         // Initialize views
-
-
         artistsRecyclerView = view.findViewById(R.id.artists_recycler_view);
         tracksRecyclerView = view.findViewById(R.id.tracks_recycler_view);
-//        welcomeText = view.findViewById(R.id.welcome_text);  // Removed welcome text
         searchView = view.findViewById(R.id.searchView);
         searchResultsLayout = view.findViewById(R.id.search_results_layout);
         profileView = view.findViewById(R.id.profile_view);
+        tracks_header = view.findViewById(R.id.tracks_header);
+
         SharedPreferences prefs = getActivity().getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         userEmail = prefs.getString(KEY_EMAIL, "");
         Log.d(TAG, "User email from prefs: " + userEmail);
@@ -95,21 +93,7 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
         } else {
             profileView.setLetter("?");
         }
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                if (!query.trim().isEmpty()) {
-                    searchTracks(query);
-                }
-                return true;
-            }
 
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                return false;
-            }
-        });
-        
         // Set up RecyclerViews
         setupRecyclerViews();
         
@@ -120,7 +104,9 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
-                searchTracks(query);
+                if (!query.trim().isEmpty()) {
+                    searchTracks(query);
+                }
                 return true;
             }
 
@@ -178,23 +164,6 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
         }
     }
 
-//    private void setupRecyclerViews() {
-//        // Setup Artists RecyclerView
-//        artistsRecyclerView.setLayoutManager(new GridLayoutManager(requireActivity(), 2));
-//        ApiArtistAdapter artistAdapter = new ApiArtistAdapter(popularArtists, artist -> searchTracks(artist.getName()));
-//        artistsRecyclerView.setAdapter(artistAdapter);
-//
-//        // Setup Tracks RecyclerView
-//        tracksRecyclerView.setLayoutManager(new LinearLayoutManager(requireActivity()));
-//        trackAdapter = new TrackAdapter(new ArrayList<>(), this);
-//        tracksRecyclerView.setAdapter(trackAdapter);
-//    }
-
-//    private void showCreatePlaylistDialog() {
-//        CreatePlaylistDialogFragment dialog = new CreatePlaylistDialogFragment();
-//        dialog.show(getSupportFragmentManager(), "create_playlist_dialog");
-//    }
-
     private void showCreateAlbumDialog() {
         // TODO: Implement album creation dialog
         Toast.makeText(requireActivity(), "Create Album coming soon!", Toast.LENGTH_SHORT).show();
@@ -234,53 +203,79 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
         requireActivity().finish();
     }
     private void searchTracks(String query) {
-        if (query.trim().isEmpty()) {
+        if (query == null || query.trim().isEmpty()) {
             Toast.makeText(requireActivity(), "Please enter a search term", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Hide only the artists RecyclerView and welcome text
-        artistsRecyclerView.setVisibility(View.GONE);
-//        welcomeText.setVisibility(View.GONE);  // Removed welcome text
-        searchResultsLayout.setVisibility(View.VISIBLE);
-        tracks_header.setVisibility(View.GONE);
-        // Keep tracksRecyclerView visible since it will show the search results
-        tracksRecyclerView.setVisibility(View.VISIBLE);
+        try {
+            // Hide artists RecyclerView
+            if (artistsRecyclerView != null) {
+                artistsRecyclerView.setVisibility(View.GONE);
+            }
 
-        Call<mydata> retrofitData = apiInterface.searchTracks(query);
-        retrofitData.enqueue(new Callback<mydata>() {
-            @Override
-            public void onResponse(Call<mydata> call, Response<mydata> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    mydata data = response.body();
-                    if (data.getData() != null && !data.getData().isEmpty()) {
-                        trackAdapter.updateTracks(data.getData());
-                        Log.d(TAG, "Found " + data.getData().size() + " tracks");
+            // Show search results layout
+            if (searchResultsLayout != null) {
+                searchResultsLayout.setVisibility(View.VISIBLE);
+            }
+
+            // Hide tracks header if it exists
+            if (tracks_header != null) {
+                tracks_header.setVisibility(View.GONE);
+            }
+
+            // Show tracks RecyclerView
+            if (tracksRecyclerView != null) {
+                tracksRecyclerView.setVisibility(View.VISIBLE);
+            }
+
+            // Make API call
+            Call<mydata> retrofitData = apiInterface.searchTracks(query);
+            retrofitData.enqueue(new Callback<mydata>() {
+                @Override
+                public void onResponse(Call<mydata> call, Response<mydata> response) {
+                    if (getActivity() == null) return; // Check if fragment is still attached
+
+                    if (response.isSuccessful() && response.body() != null) {
+                        mydata data = response.body();
+                        if (data.getData() != null && !data.getData().isEmpty()) {
+                            trackAdapter.updateTracks(data.getData());
+                            Log.d(TAG, "Found " + data.getData().size() + " tracks");
+                        } else {
+                            Toast.makeText(requireActivity(), "No tracks found", Toast.LENGTH_SHORT).show();
+                            trackAdapter.updateTracks(new ArrayList<>());
+                        }
                     } else {
-                        Toast.makeText(requireActivity(), "No tracks found", Toast.LENGTH_SHORT).show();
-                        trackAdapter.updateTracks(new ArrayList<>());
+                        String errorMessage = "Error: " + response.code();
+                        Log.e(TAG, errorMessage);
+                        Toast.makeText(requireActivity(), errorMessage, Toast.LENGTH_SHORT).show();
                     }
-                } else {
-                    String errorMessage = "Error: " + response.code();
-                    Log.e(TAG, errorMessage);
-                    Toast.makeText(requireActivity(), errorMessage, Toast.LENGTH_SHORT).show();
                 }
-            }
 
-            @Override
-            public void onFailure(Call<mydata> call, Throwable t) {
-                Log.e(TAG, "Error fetching tracks", t);
-                Toast.makeText(requireActivity(), "Error fetching tracks", Toast.LENGTH_SHORT).show();
+                @Override
+                public void onFailure(Call<mydata> call, Throwable t) {
+                    if (getActivity() == null) return; // Check if fragment is still attached
+                    Log.e(TAG, "Error fetching tracks", t);
+                    Toast.makeText(requireActivity(), "Error fetching tracks: " + t.getMessage(), 
+                        Toast.LENGTH_SHORT).show();
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error in searchTracks: " + e.getMessage());
+            if (getActivity() != null) {
+                Toast.makeText(requireActivity(), "Error searching tracks: " + e.getMessage(), 
+                    Toast.LENGTH_SHORT).show();
             }
-        });
+        }
     }
     public void onBackPressed() {
-        if (searchResultsLayout.getVisibility() == View.VISIBLE) {
+        if (searchResultsLayout != null && searchResultsLayout.getVisibility() == View.VISIBLE) {
             // Show everything back
-            tracks_header.setVisibility(View.VISIBLE);
+            if (tracks_header != null) {
+                tracks_header.setVisibility(View.VISIBLE);
+            }
             searchResultsLayout.setVisibility(View.GONE);
             artistsRecyclerView.setVisibility(View.VISIBLE);
-
             tracksRecyclerView.setVisibility(View.VISIBLE);
             searchView.setQuery("", false);
             searchView.clearFocus();
