@@ -45,6 +45,7 @@ public class MusicService extends Service {
     private LocalSong currentSong;
     private AppDatabase database;
     private MediaControlReceiver mediaControlReceiver;
+    private boolean isPlaying = false;
 
     public class LocalBinder extends Binder {
         public MusicService getService() {
@@ -122,6 +123,15 @@ public class MusicService extends Service {
             String action = intent.getAction();
             Log.d(TAG, "Received action: " + action);
             
+            if ("STOP_SERVICE".equals(action)) {
+                if (mediaPlayer != null) {
+                    mediaPlayer.stop();
+                }
+                stopForeground(true);
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+
             switch (action) {
                 case ACTION_PLAY:
                     if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
@@ -171,6 +181,9 @@ public class MusicService extends Service {
             String filePath = song.getFilePath();
             Log.d(TAG, "Starting playback process for: " + song.getTitle());
             Log.d(TAG, "File path: " + filePath);
+            
+            // Notify ApiMusicService
+            ApiMusicService.setLocalMusicPlaying(true);
             
             // Clean up existing MediaPlayer with error handling
             if (mediaPlayer != null) {
@@ -414,6 +427,12 @@ public class MusicService extends Service {
             PendingIntent prevPendingIntent = PendingIntent.getBroadcast(this, 4, prevIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
+            // Create stop intent
+            Intent stopIntent = new Intent(this, MusicService.class);
+            stopIntent.setAction("STOP_SERVICE");
+            PendingIntent stopPendingIntent = PendingIntent.getService(this, 5, stopIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
             // Create the notification builder
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_local)
@@ -424,7 +443,8 @@ public class MusicService extends Service {
                     .setContentIntent(contentIntent)
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setOngoing(true);
+                    .setAutoCancel(true)
+                    .setOngoing(mediaPlayer != null && mediaPlayer.isPlaying());
 
             // Add action buttons
             builder.addAction(R.drawable.ic_previous, "Previous", prevPendingIntent);
@@ -434,6 +454,7 @@ public class MusicService extends Service {
                 builder.addAction(R.drawable.ic_play, "Play", playPendingIntent);
             }
             builder.addAction(R.drawable.ic_next, "Next", nextPendingIntent);
+            builder.addAction(R.drawable.ic_clear, "Stop", stopPendingIntent);
 
             // Set media style
             androidx.media.app.NotificationCompat.MediaStyle mediaStyle = new androidx.media.app.NotificationCompat.MediaStyle()
@@ -464,7 +485,12 @@ public class MusicService extends Service {
             if (notificationManager != null) {
                 Notification notification = createNotification();
                 if (notification != null) {
-                    notificationManager.notify(NOTIFICATION_ID, notification);
+                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                        startForeground(NOTIFICATION_ID, notification);
+                    } else {
+                        stopForeground(false);
+                        notificationManager.notify(NOTIFICATION_ID, notification);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -488,6 +514,9 @@ public class MusicService extends Service {
                 mediaPlayer = null;
             }
 
+            // Notify ApiMusicService
+            ApiMusicService.setLocalMusicPlaying(false);
+
             // Unregister receiver with error handling
             try {
                 if (mediaControlReceiver != null) {
@@ -499,14 +528,11 @@ public class MusicService extends Service {
             }
 
             // Remove notification
-            try {
-                NotificationManager notificationManager = 
-                        (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                if (notificationManager != null) {
-                    notificationManager.cancel(NOTIFICATION_ID);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error removing notification: " + e.getMessage());
+            stopForeground(true);
+            NotificationManager notificationManager = 
+                    (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (notificationManager != null) {
+                notificationManager.cancel(NOTIFICATION_ID);
             }
 
             Log.d(TAG, "MusicService destroyed");
@@ -536,5 +562,23 @@ public class MusicService extends Service {
 
     public boolean isPlaying() {
         return mediaPlayer != null && mediaPlayer.isPlaying();
+    }
+
+    private void stopPlayback() {
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.stop();
+            }
+            mediaPlayer.reset();
+        }
+        // Notify ApiMusicService
+        ApiMusicService.setLocalMusicPlaying(false);
+        
+        isPlaying = false;
+        stopForeground(true);
+        NotificationManager notificationManager = 
+            (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        notificationManager.cancel(NOTIFICATION_ID);
+        stopSelf();
     }
 } 

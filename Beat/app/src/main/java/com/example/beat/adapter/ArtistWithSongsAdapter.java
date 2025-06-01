@@ -1,5 +1,6 @@
 package com.example.beat.adapter;
 
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +17,7 @@ import com.example.beat.data.entities.Artist;
 import com.example.beat.data.entities.ArtistWithSongs;
 import com.example.beat.data.entities.LocalSong;
 import com.example.beat.ui.ArtistSongsFragment;
+import com.example.beat.ui.LocalMusicPlayerActivity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -75,8 +77,12 @@ public class ArtistWithSongsAdapter extends RecyclerView.Adapter<ArtistWithSongs
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
                     ArtistWithSongs artist = adapter.artists.get(position);
-                    ArtistSongsFragment fragment = ArtistSongsFragment.newInstance(artist);
-                    ((MainActivity) itemView.getContext()).navigateToFragment(fragment);
+                    if (artist.songs != null && !artist.songs.isEmpty()) {
+                        Intent intent = new Intent(itemView.getContext(), LocalMusicPlayerActivity.class);
+                        intent.putParcelableArrayListExtra("SONG_LIST", new ArrayList<>(artist.songs));
+                        intent.putExtra("POSITION", 0);
+                        itemView.getContext().startActivity(intent);
+                    }
                 }
             });
         }

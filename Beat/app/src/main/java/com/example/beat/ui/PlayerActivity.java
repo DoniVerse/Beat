@@ -111,11 +111,10 @@ public class PlayerActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player);
 
-        // Handle launch from notification
-        if (getIntent().getBooleanExtra("FROM_NOTIFICATION", false)) {
-            if (savedInstanceState != null) {
-                return;
-            }
+        // Enable back arrow in action bar
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
 
         handler = new Handler();
@@ -126,8 +125,16 @@ public class PlayerActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter("API_PLAYBACK_STATUS");
         registerReceiver(playbackReceiver, filter);
 
-        // Get track data from intent
-        Intent intent = getIntent();
+        handleIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleIntent(intent);
+    }
+
+    private void handleIntent(Intent intent) {
         if (intent != null) {
             currentTitle = intent.getStringExtra("title");
             currentArtist = intent.getStringExtra("artist");
@@ -136,7 +143,14 @@ public class PlayerActivity extends AppCompatActivity {
 
             if (currentStreamUrl != null) {
                 updateTrackInfo();
-                bindToService();
+                if (!serviceBound) {
+                    bindToService();
+                } else if (musicService != null) {
+                    musicService.playTrack(currentStreamUrl, currentTitle, currentArtist, currentAlbumArtUrl);
+                    isPlaying = true;
+                    updatePlayPauseButton();
+                    startProgressUpdates();
+                }
             }
         }
     }
@@ -228,11 +242,30 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void playPrevious() {
-        // Implement previous track logic
+        if (musicService != null && callback != null) {
+            if (musicService.getCurrentPosition() > 3000) {
+                // If more than 3 seconds have played, restart the song
+                musicService.seekTo(0);
+            } else {
+                callback.onPrevious();
+            }
+        }
     }
 
     private void playNext() {
-        // Implement next track logic
+        if (musicService != null && callback != null) {
+            if (isRepeat) {
+                // Replay current song
+                musicService.seekTo(0);
+                musicService.resumeTrack();
+            } else if (isShuffle) {
+                // Let the callback handle shuffle
+                callback.onNext();
+            } else {
+                // Normal next
+                callback.onNext();
+            }
+        }
     }
 
     private void toggleShuffle() {
@@ -269,16 +302,21 @@ public class PlayerActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        // Send broadcast to show mini player
-        Intent updateIntent = new Intent("MINI_PLAYER_UPDATE");
-        updateIntent.putExtra("title", currentTitle);
-        updateIntent.putExtra("artist", currentArtist);
-        updateIntent.putExtra("albumArtUri", currentAlbumArtUrl);
-        updateIntent.putExtra("show", true);
-        sendBroadcast(updateIntent);
+        try {
+            // Stop playback when navigating back
+            stopPlayback();
+            
+            // Hide mini player
+            Intent updateIntent = new Intent("MINI_PLAYER_UPDATE");
+            updateIntent.putExtra("show", false);
+            sendBroadcast(updateIntent);
 
-        // Minimize the activity
-        moveTaskToBack(true);
+            // Navigate back to previous screen
+            super.onBackPressed();
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onBackPressed: " + e.getMessage());
+            super.onBackPressed();
+        }
     }
 
     @Override
@@ -297,27 +335,67 @@ public class PlayerActivity extends AppCompatActivity {
         stopProgressUpdates();
     }
 
+    private void stopPlayback() {
+        if (musicService != null) {
+            if (isPlaying) {
+                musicService.pauseTrack();
+                isPlaying = false;
+            }
+            // Send stop action to service
+            Intent stopIntent = new Intent(this, ApiMusicService.class);
+            stopIntent.setAction(ApiMusicService.ACTION_STOP);
+            startService(stopIntent);
+        }
+    }
+
     @Override
     protected void onDestroy() {
-        super.onDestroy();
-        stopProgressUpdates();
-        
-        if (serviceBound) {
-            try {
-                unbindService(serviceConnection);
-            } catch (Exception e) {
-                Log.e(TAG, "Error unbinding service: " + e.getMessage());
-            }
-            serviceBound = false;
-        }
-        
         try {
-            unregisterReceiver(playbackReceiver);
-        } catch (IllegalArgumentException e) {
-            // Receiver not registered, ignore
+            super.onDestroy();
+            stopProgressUpdates();
+            stopPlayback();
+            
+            // Hide mini player when activity is destroyed
+            Intent updateIntent = new Intent("MINI_PLAYER_UPDATE");
+            updateIntent.putExtra("show", false);
+            sendBroadcast(updateIntent);
+            
+            if (serviceBound) {
+                try {
+                    unbindService(serviceConnection);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error unbinding service: " + e.getMessage());
+                }
+                serviceBound = false;
+            }
+            
+            try {
+                unregisterReceiver(playbackReceiver);
+            } catch (IllegalArgumentException e) {
+                // Receiver not registered, ignore
+            }
+            
+            handler = null;
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onDestroy: " + e.getMessage());
         }
-        
-        handler = null;
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
+    }
+
+    private ServiceCallback callback;
+
+    public void setCallback(ServiceCallback callback) {
+        this.callback = callback;
+    }
+
+    public interface ServiceCallback {
+        void onNext();
+        void onPrevious();
     }
 }
 

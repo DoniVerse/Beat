@@ -124,6 +124,12 @@ public class MainActivity extends AppCompatActivity {
         miniPrevButton = findViewById(R.id.mini_prev_button);
         miniNextButton = findViewById(R.id.mini_next_button);
 
+        // Register broadcast receiver
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("MINI_PLAYER_UPDATE");
+        filter.addAction("PLAYBACK_STATUS");
+        registerReceiver(playbackReceiver, filter);
+
         // Set up mini player click listeners
         miniPlayer.setOnClickListener(v -> {
             // Launch full player
@@ -134,57 +140,60 @@ public class MainActivity extends AppCompatActivity {
 
         miniPlayPauseButton.setOnClickListener(v -> {
             // Toggle play/pause
-            Intent intent = new Intent(MusicService.ACTION_PLAY);
+            Intent intent = new Intent(isPlaying() ? MusicService.ACTION_PAUSE : MusicService.ACTION_PLAY);
             sendBroadcast(intent);
         });
 
         miniPrevButton.setOnClickListener(v -> {
-            // Previous track
             Intent intent = new Intent(MusicService.ACTION_PREVIOUS);
             sendBroadcast(intent);
         });
 
         miniNextButton.setOnClickListener(v -> {
-            // Next track
             Intent intent = new Intent(MusicService.ACTION_NEXT);
             sendBroadcast(intent);
         });
-
-        // Register broadcast receiver for playback updates
-        IntentFilter filter = new IntentFilter();
-        filter.addAction("PLAYBACK_STATUS");
-        filter.addAction("MINI_PLAYER_UPDATE");
-        registerReceiver(playbackReceiver, filter);
     }
 
-    private final BroadcastReceiver playbackReceiver = new BroadcastReceiver() {
+    private BroadcastReceiver playbackReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction() != null) {
-                switch (intent.getAction()) {
-                    case "PLAYBACK_STATUS":
-                        boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
-                        miniPlayPauseButton.setImageResource(isPlaying ? 
-                            R.drawable.ic_pause : R.drawable.ic_play);
-                        break;
-                    case "MINI_PLAYER_UPDATE":
-                        updateMiniPlayer(intent);
-                        break;
-                }
+            if (intent.getAction() == null) return;
+            
+            switch (intent.getAction()) {
+                case "MINI_PLAYER_UPDATE":
+                    updateMiniPlayer(intent);
+                    break;
+                case "PLAYBACK_STATUS":
+                    boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
+                    updatePlayPauseButton(isPlaying);
+                    break;
             }
         }
     };
+
+    private void updatePlayPauseButton(boolean playing) {
+        miniPlayPauseButton.setImageResource(playing ? R.drawable.ic_pause : R.drawable.ic_play);
+    }
+
+    private boolean isPlaying() {
+        return miniPlayPauseButton.getDrawable().getConstantState().equals(
+            getResources().getDrawable(R.drawable.ic_pause).getConstantState()
+        );
+    }
 
     private void updateMiniPlayer(Intent intent) {
         String title = intent.getStringExtra("title");
         String artist = intent.getStringExtra("artist");
         String albumArtUri = intent.getStringExtra("albumArtUri");
         boolean show = intent.getBooleanExtra("show", false);
+        boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
 
         if (show) {
             miniPlayer.setVisibility(View.VISIBLE);
             miniSongTitle.setText(title);
             miniArtistName.setText(artist);
+            updatePlayPauseButton(isPlaying);
 
             if (albumArtUri != null && !albumArtUri.isEmpty()) {
                 Glide.with(this)

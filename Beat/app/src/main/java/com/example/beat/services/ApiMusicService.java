@@ -16,6 +16,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
+import android.widget.Toast;
 import androidx.core.app.NotificationCompat;
 import com.bumptech.glide.Glide;
 import com.example.beat.R;
@@ -25,6 +26,8 @@ public class ApiMusicService extends Service {
     private static final String TAG = "ApiMusicService";
     private static final String CHANNEL_ID = "ApiMusicServiceChannel";
     private static final int NOTIFICATION_ID = 2;
+    public static final String ACTION_STOP = "com.example.beat.ACTION_STOP";
+    private static boolean isLocalMusicPlaying = false;
 
     private final IBinder binder = new LocalBinder();
     private MediaPlayer mediaPlayer;
@@ -97,7 +100,53 @@ public class ApiMusicService extends Service {
         this.callback = callback;
     }
 
+    public static void setLocalMusicPlaying(boolean playing) {
+        isLocalMusicPlaying = playing;
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && intent.getAction() != null) {
+            String action = intent.getAction();
+            Log.d(TAG, "Received action: " + action);
+            
+            if (ACTION_STOP.equals(action)) {
+                stopPlayback();
+                return START_NOT_STICKY;
+            }
+
+            switch (action) {
+                case "API_PLAY":
+                    if (isLocalMusicPlaying) {
+                        Toast.makeText(this, "Please stop local music playback first", Toast.LENGTH_SHORT).show();
+                        return START_STICKY;
+                    }
+                    if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+                        resumeTrack();
+                    }
+                    break;
+                case "API_PAUSE":
+                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                        pauseTrack();
+                    }
+                    break;
+                case "API_NEXT":
+                    if (callback != null) callback.onNext();
+                    break;
+                case "API_PREVIOUS":
+                    if (callback != null) callback.onPrevious();
+                    break;
+            }
+        }
+        return START_STICKY;
+    }
+
     public void playTrack(String streamUrl, String title, String artist, String albumArtUrl) {
+        if (isLocalMusicPlaying) {
+            Toast.makeText(this, "Please stop local music playback first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         try {
             currentStreamUrl = streamUrl;
             currentTitle = title;
@@ -117,6 +166,7 @@ public class ApiMusicService extends Service {
             broadcastStatus();
         } catch (Exception e) {
             Log.e(TAG, "Error playing track: " + e.getMessage());
+            Toast.makeText(this, "Error playing track", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -175,24 +225,32 @@ public class ApiMusicService extends Service {
         try {
             // Create pending intents for notification actions
             Intent notificationIntent = new Intent(this, PlayerActivity.class);
+            notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             notificationIntent.putExtra("FROM_NOTIFICATION", true);
+            notificationIntent.putExtra("title", currentTitle);
+            notificationIntent.putExtra("artist", currentArtist);
+            notificationIntent.putExtra("albumArtUrl", currentAlbumArtUrl);
+            notificationIntent.putExtra("streamUrl", currentStreamUrl);
             PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
+            // Create control intents
             Intent playIntent = new Intent("API_PLAY");
-            PendingIntent playPendingIntent = PendingIntent.getBroadcast(this, 0, playIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
             Intent pauseIntent = new Intent("API_PAUSE");
-            PendingIntent pausePendingIntent = PendingIntent.getBroadcast(this, 0, pauseIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
             Intent nextIntent = new Intent("API_NEXT");
-            PendingIntent nextPendingIntent = PendingIntent.getBroadcast(this, 0, nextIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
             Intent previousIntent = new Intent("API_PREVIOUS");
-            PendingIntent previousPendingIntent = PendingIntent.getBroadcast(this, 0, previousIntent,
+            Intent stopIntent = new Intent(this, ApiMusicService.class);
+            stopIntent.setAction(ACTION_STOP);
+
+            PendingIntent playPendingIntent = PendingIntent.getBroadcast(this, 1, playIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent pausePendingIntent = PendingIntent.getBroadcast(this, 2, pauseIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent nextPendingIntent = PendingIntent.getBroadcast(this, 3, nextIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent previousPendingIntent = PendingIntent.getBroadcast(this, 4, previousIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent stopPendingIntent = PendingIntent.getService(this, 5, stopIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
             // Load album art
@@ -217,15 +275,31 @@ public class ApiMusicService extends Service {
                 .setLargeIcon(albumArt)
                 .setContentIntent(pendingIntent)
                 .setOnlyAlertOnce(true)
+                .setAutoCancel(true)
+                .setOngoing(isPlaying)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .addAction(R.drawable.ic_previous, "Previous", previousPendingIntent)
                 .addAction(isPlaying ? R.drawable.ic_pause : R.drawable.ic_play,
                     isPlaying ? "Pause" : "Play",
                     isPlaying ? pausePendingIntent : playPendingIntent)
-                .addAction(R.drawable.ic_next, "Next", nextPendingIntent);
+                .addAction(R.drawable.ic_next, "Next", nextPendingIntent)
+                .addAction(R.drawable.ic_clear, "Stop", stopPendingIntent);
+
+            // Set media style
+            androidx.media.app.NotificationCompat.MediaStyle mediaStyle = new androidx.media.app.NotificationCompat.MediaStyle()
+                .setShowActionsInCompactView(0, 1, 2);
+            builder.setStyle(mediaStyle);
 
             Notification notification = builder.build();
-            startForeground(NOTIFICATION_ID, notification);
+            
+            if (isPlaying) {
+                startForeground(NOTIFICATION_ID, notification);
+            } else {
+                stopForeground(false);
+                NotificationManager notificationManager = 
+                    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                notificationManager.notify(NOTIFICATION_ID, notification);
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error updating notification: " + e.getMessage());
         }
@@ -242,13 +316,25 @@ public class ApiMusicService extends Service {
         return binder;
     }
 
+    private void stopPlayback() {
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.stop();
+            }
+            mediaPlayer.reset();
+        }
+        isPlaying = false;
+        stopForeground(true);
+        NotificationManager notificationManager = 
+            (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(NOTIFICATION_ID);
+        stopSelf();
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
+        stopPlayback();
         try {
             unregisterReceiver(controlReceiver);
         } catch (IllegalArgumentException e) {

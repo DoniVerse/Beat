@@ -66,6 +66,10 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
     private boolean serviceBound = false;
     private boolean isActivityVisible = true;
 
+    private static ArrayList<LocalSong> savedSongList = null;
+    private static int savedPosition = 0;
+    private static boolean wasMinimized = false;
+
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -145,14 +149,11 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_local_music_player);
         
-        // Handle launch from notification
-        if (getIntent().getBooleanExtra("FROM_NOTIFICATION", false)) {
-            // Just restore the activity, don't recreate the player
-            if (savedInstanceState != null) {
-                return;
-            }
-        }
-
+        // Load saved shuffle and repeat states
+        SharedPreferences playerPrefs = getSharedPreferences("PlayerPrefs", MODE_PRIVATE);
+        isShuffle = playerPrefs.getBoolean("shuffle_enabled", false);
+        isRepeat = playerPrefs.getBoolean("repeat_enabled", false);
+        
         try {
             handler = new Handler();
 
@@ -166,8 +167,8 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
             registerReceiver(playbackReceiver, filter);
 
             // Get user ID
-            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-            userId = prefs.getInt("userId", -1);
+            SharedPreferences userPrefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+            userId = userPrefs.getInt("userId", -1);
 
             if (userId == -1) {
                 Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show();
@@ -178,37 +179,9 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
             initializeViews();
             setupClickListeners();
 
-            Intent intent = getIntent();
-            if (intent != null) {
-                ArrayList<LocalSong> songs = intent.getParcelableArrayListExtra("SONG_LIST");
-                if (songs != null && !songs.isEmpty()) {
-                    songList = songs;
-                    currentPosition = intent.getIntExtra("POSITION", 0);
-                    if (currentPosition >= 0 && currentPosition < songList.size()) {
-                        currentSong = songList.get(currentPosition);
-                        updateSongInfo();
-                        
-                        // Bind to the music service with error handling
-                        try {
-                            Intent serviceIntent = new Intent(this, MusicService.class);
-                            if (!bindService(serviceIntent, serviceConnection, BIND_AUTO_CREATE)) {
-                                Log.e(TAG, "Failed to bind to service");
-                                Toast.makeText(this, "Failed to start music service", Toast.LENGTH_SHORT).show();
-                            }
-                            startService(serviceIntent);
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error binding to service: " + e.getMessage());
-                            Toast.makeText(this, "Error starting music service", Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        throw new IllegalArgumentException("Invalid song position");
-                    }
-                } else {
-                    throw new IllegalArgumentException("No songs provided");
-                }
-            } else {
-                throw new IllegalArgumentException("No intent data provided");
-            }
+            // Handle intent
+            handlePlaybackIntent(getIntent());
+            
         } catch (Exception e) {
             Log.e(TAG, "Error in onCreate: " + e.getMessage());
             Toast.makeText(this, "Error starting player: " + e.getMessage(), 
@@ -357,7 +330,35 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
     private void playPrevious() {
         try {
             if (songList != null && !songList.isEmpty()) {
-                currentPosition = (currentPosition - 1 + songList.size()) % songList.size();
+                if (musicService != null && musicService.getCurrentPosition() > 3000) {
+                    // If more than 3 seconds have played, restart the song
+                    musicService.seekTo(0);
+                    return;
+                }
+
+                if (isRepeat) {
+                    // Replay current song
+                    if (musicService != null) {
+                        musicService.seekTo(0);
+                        musicService.playSong(currentSong);
+                        isPlaying = true;
+                        updatePlayPauseButton(true);
+                        startProgressUpdates();
+                    }
+                    return;
+                }
+                
+                if (isShuffle) {
+                    // Pick a random song that's not the current one
+                    int newPosition;
+                    do {
+                        newPosition = new Random().nextInt(songList.size());
+                    } while (songList.size() > 1 && newPosition == currentPosition);
+                    currentPosition = newPosition;
+                } else {
+                    currentPosition = (currentPosition - 1 + songList.size()) % songList.size();
+                }
+                
                 currentSong = songList.get(currentPosition);
                 updateSongInfo();
                 if (musicService != null) {
@@ -376,11 +377,29 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
     private void playNext() {
         try {
             if (songList != null && !songList.isEmpty()) {
+                if (isRepeat) {
+                    // Replay current song
+                    if (musicService != null) {
+                        musicService.seekTo(0);
+                        musicService.playSong(currentSong);
+                        isPlaying = true;
+                        updatePlayPauseButton(true);
+                        startProgressUpdates();
+                    }
+                    return;
+                }
+                
                 if (isShuffle) {
-                    currentPosition = new Random().nextInt(songList.size());
+                    // Pick a random song that's not the current one
+                    int newPosition;
+                    do {
+                        newPosition = new Random().nextInt(songList.size());
+                    } while (songList.size() > 1 && newPosition == currentPosition);
+                    currentPosition = newPosition;
                 } else {
                     currentPosition = (currentPosition + 1) % songList.size();
                 }
+                
                 currentSong = songList.get(currentPosition);
                 updateSongInfo();
                 if (musicService != null) {
@@ -401,6 +420,10 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         shuffleBtn.setImageResource(isShuffle ? R.drawable.ic_shuffle_on : R.drawable.ic_shuffle);
         Toast.makeText(this, "Shuffle " + (isShuffle ? "enabled" : "disabled"), 
             Toast.LENGTH_SHORT).show();
+        
+        // Save shuffle state
+        SharedPreferences prefs = getSharedPreferences("PlayerPrefs", MODE_PRIVATE);
+        prefs.edit().putBoolean("shuffle_enabled", isShuffle).apply();
     }
 
     private void toggleRepeat() {
@@ -408,6 +431,10 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         repeatBtn.setImageResource(isRepeat ? R.drawable.ic_repeat_on : R.drawable.ic_repeat);
         Toast.makeText(this, "Repeat " + (isRepeat ? "enabled" : "disabled"), 
             Toast.LENGTH_SHORT).show();
+        
+        // Save repeat state
+        SharedPreferences prefs = getSharedPreferences("PlayerPrefs", MODE_PRIVATE);
+        prefs.edit().putBoolean("repeat_enabled", isRepeat).apply();
     }
 
     @Override
@@ -431,6 +458,13 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         try {
             super.onDestroy();
             stopProgressUpdates();
+            
+            // Only clear saved state if we're actually being destroyed (not minimized)
+            if (!wasMinimized) {
+                savedSongList = null;
+                savedPosition = 0;
+                wasMinimized = false;
+            }
             
             // Hide mini player when activity is destroyed
             Intent updateIntent = new Intent("MINI_PLAYER_UPDATE");
@@ -460,16 +494,27 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        // Send broadcast to show mini player
-        Intent updateIntent = new Intent("MINI_PLAYER_UPDATE");
-        updateIntent.putExtra("title", currentSong.getTitle());
-        updateIntent.putExtra("artist", getArtistName(currentSong.getArtistId()));
-        updateIntent.putExtra("albumArtUri", currentSong.getAlbumArtUri());
-        updateIntent.putExtra("show", true);
-        sendBroadcast(updateIntent);
+        try {
+            // Save current state
+            savedSongList = new ArrayList<>(songList);
+            savedPosition = currentPosition;
+            wasMinimized = true;
 
-        // Minimize the activity
-        moveTaskToBack(true);
+            // Send broadcast to show mini player
+            Intent updateIntent = new Intent("MINI_PLAYER_UPDATE");
+            updateIntent.putExtra("title", currentSong.getTitle());
+            updateIntent.putExtra("artist", getArtistName(currentSong.getArtistId()));
+            updateIntent.putExtra("albumArtUri", currentSong.getAlbumArtUri());
+            updateIntent.putExtra("show", true);
+            updateIntent.putExtra("isPlaying", isPlaying);
+            sendBroadcast(updateIntent);
+
+            // Minimize the activity
+            moveTaskToBack(true);
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onBackPressed: " + e.getMessage());
+            super.onBackPressed();
+        }
     }
 
     @Override
@@ -482,13 +527,105 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        
-        // If launched from notification, bring activity to front
-        if (intent.getBooleanExtra("FROM_NOTIFICATION", false)) {
-            if (musicService != null) {
+        handlePlaybackIntent(intent);
+    }
+
+    private void handlePlaybackIntent(Intent intent) {
+        if (intent == null) {
+            // Check if we're reopening from minimized state
+            if (wasMinimized && savedSongList != null) {
+                songList = savedSongList;
+                currentPosition = savedPosition;
+                currentSong = songList.get(currentPosition);
                 updateSongInfo();
-                updatePlayPauseButton(musicService.isPlaying());
+                
+                // Bind to the music service
+                Intent serviceIntent = new Intent(this, MusicService.class);
+                if (!bindService(serviceIntent, serviceConnection, BIND_AUTO_CREATE)) {
+                    Log.e(TAG, "Failed to bind to service");
+                    Toast.makeText(this, "Failed to start music service", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
+                }
+                startService(serviceIntent);
+                return;
             }
+            
+            Log.e(TAG, "Null intent received and no saved state");
+            finish();
+            return;
+        }
+
+        try {
+            // Handle launch from notification
+            if (intent.getBooleanExtra("FROM_NOTIFICATION", false)) {
+                if (wasMinimized && savedSongList != null) {
+                    songList = savedSongList;
+                    currentPosition = savedPosition;
+                    currentSong = songList.get(currentPosition);
+                }
+                if (musicService != null) {
+                    updateSongInfo();
+                    updatePlayPauseButton(musicService.isPlaying());
+                }
+                return;
+            }
+
+            // Handle new song request
+            ArrayList<LocalSong> songs = intent.getParcelableArrayListExtra("SONG_LIST");
+            if (songs == null || songs.isEmpty()) {
+                if (wasMinimized && savedSongList != null) {
+                    songList = savedSongList;
+                    currentPosition = savedPosition;
+                    currentSong = songList.get(currentPosition);
+                    updateSongInfo();
+                    
+                    // Bind to the music service
+                    Intent serviceIntent = new Intent(this, MusicService.class);
+                    if (!bindService(serviceIntent, serviceConnection, BIND_AUTO_CREATE)) {
+                        Log.e(TAG, "Failed to bind to service");
+                        Toast.makeText(this, "Failed to start music service", Toast.LENGTH_SHORT).show();
+                        finish();
+                        return;
+                    }
+                    startService(serviceIntent);
+                    return;
+                }
+                
+                Log.e(TAG, "No songs provided in intent and no saved state");
+                Toast.makeText(this, "No songs available to play", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+
+            // Clear saved state if we're playing new songs
+            wasMinimized = false;
+            savedSongList = null;
+            
+            songList = songs;
+            currentPosition = intent.getIntExtra("POSITION", 0);
+            
+            if (currentPosition < 0 || currentPosition >= songList.size()) {
+                Log.e(TAG, "Invalid song position: " + currentPosition);
+                currentPosition = 0;
+            }
+
+            currentSong = songList.get(currentPosition);
+            updateSongInfo();
+            
+            // Bind to the music service
+            Intent serviceIntent = new Intent(this, MusicService.class);
+            if (!bindService(serviceIntent, serviceConnection, BIND_AUTO_CREATE)) {
+                Log.e(TAG, "Failed to bind to service");
+                Toast.makeText(this, "Failed to start music service", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+            startService(serviceIntent);
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling playback intent: " + e.getMessage());
+            Toast.makeText(this, "Error starting playback", Toast.LENGTH_SHORT).show();
+            finish();
         }
     }
  
