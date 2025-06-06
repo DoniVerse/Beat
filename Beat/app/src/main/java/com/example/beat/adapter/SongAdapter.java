@@ -12,11 +12,11 @@ import com.example.beat.R;
 import com.example.beat.data.entities.LocalSong;
 import com.example.beat.ui.LocalMusicPlayerActivity;
 import com.google.android.material.imageview.ShapeableImageView;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder> {
+    private OnSongSelectedListener listener;
     private List<LocalSong> songs;
 
     public SongAdapter() {
@@ -25,6 +25,10 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
 
     public SongAdapter(List<LocalSong> songs) {
         this.songs = songs != null ? new ArrayList<>(songs) : new ArrayList<>();
+    }
+
+    public void setOnSongSelectedListener(OnSongSelectedListener listener) {
+        this.listener = listener;
     }
 
     public void updateSongs(List<LocalSong> newSongs) {
@@ -66,10 +70,15 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
                     LocalSong clickedSong = songs.get(position);
-                    Intent intent = new Intent(itemView.getContext(), LocalMusicPlayerActivity.class);
-                    intent.putParcelableArrayListExtra("SONG_LIST", (ArrayList<LocalSong>) songs);
-                    intent.putExtra("POSITION", position);
-                    itemView.getContext().startActivity(intent);
+                    if (listener != null) {
+                        listener.onSongSelected(position);
+                    } else {
+                        // Fallback to starting a new activity if current activity is not set
+                        Intent intent = new Intent(itemView.getContext(), LocalMusicPlayerActivity.class);
+                        intent.putParcelableArrayListExtra("SONG_LIST", (ArrayList<LocalSong>) songs);
+                        intent.putExtra("POSITION", position);
+                        itemView.getContext().startActivity(intent);
+                    }
                 }
             });
         }

@@ -33,6 +33,7 @@ import com.example.beat.receivers.MediaControlReceiver;
 public class MusicService extends Service {
     private static final String TAG = "MusicService";
     private static final String CHANNEL_ID = "MusicServiceChannel";
+    private static final String CHANNEL_NAME = "Music Service";
     private static final int NOTIFICATION_ID = 1;
 
     public static final String ACTION_PLAY = "com.example.beat.ACTION_PLAY";
@@ -42,14 +43,32 @@ public class MusicService extends Service {
 
     private MediaPlayer mediaPlayer;
     private final IBinder binder = new LocalBinder();
+    private LocalBinder localBinder = (LocalBinder) binder;
     private LocalSong currentSong;
     private AppDatabase database;
     private MediaControlReceiver mediaControlReceiver;
     private boolean isPlaying = false;
+    private MusicServiceCallback callback;
 
     public class LocalBinder extends Binder {
+        private int bindCount = 0;
+
         public MusicService getService() {
             return MusicService.this;
+        }
+
+        public void onBind() {
+            bindCount++;
+            Log.d(TAG, "Service bound, count: " + bindCount);
+        }
+
+        public void onUnbind() {
+            bindCount--;
+            Log.d(TAG, "Service unbound, count: " + bindCount);
+        }
+
+        public int getBindCount() {
+            return bindCount;
         }
     }
 
@@ -114,7 +133,18 @@ public class MusicService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
+        localBinder.onBind();
         return binder;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        localBinder.onUnbind();
+        // If no components are bound and we're not playing, stop the service
+        if (!isBound() && !isPlaying) {
+            stopSelf();
+        }
+        return super.onUnbind(intent);
     }
 
     @Override
@@ -501,57 +531,20 @@ public class MusicService extends Service {
     @Override
     public void onDestroy() {
         try {
-            // Clean up MediaPlayer
-            if (mediaPlayer != null) {
+            stopPlayback();
+            
+            if (mediaControlReceiver != null) {
                 try {
-                    if (mediaPlayer.isPlaying()) {
-                        mediaPlayer.stop();
-                    }
-                    mediaPlayer.release();
-                } catch (Exception e) {
-                    Log.e(TAG, "Error releasing MediaPlayer: " + e.getMessage());
-                }
-                mediaPlayer = null;
-            }
-
-            // Notify ApiMusicService
-            ApiMusicService.setLocalMusicPlaying(false);
-
-            // Unregister receiver with error handling
-            try {
-                if (mediaControlReceiver != null) {
                     unregisterReceiver(mediaControlReceiver);
-                    mediaControlReceiver = null;
+                } catch (IllegalArgumentException e) {
+                    // Receiver not registered, ignore
                 }
-            } catch (IllegalArgumentException e) {
-                Log.e(TAG, "Error unregistering receiver: " + e.getMessage());
+                mediaControlReceiver = null;
             }
-
-            // Remove notification
-            stopForeground(true);
-            NotificationManager notificationManager = 
-                    (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            if (notificationManager != null) {
-                notificationManager.cancel(NOTIFICATION_ID);
-            }
-
-            Log.d(TAG, "MusicService destroyed");
         } catch (Exception e) {
-            Log.e(TAG, "Error in onDestroy: " + e.getMessage());
+            Log.e(TAG, "Error in onDestroy", e);
         }
         super.onDestroy();
-    }
-
-    // Interface for callbacks
-    public interface ServiceCallback {
-        void onNext();
-        void onPrevious();
-    }
-
-    private ServiceCallback callback;
-
-    public void setCallback(ServiceCallback callback) {
-        this.callback = callback;
     }
 
     private void broadcastStatus(boolean isPlaying) {
@@ -564,21 +557,44 @@ public class MusicService extends Service {
         return mediaPlayer != null && mediaPlayer.isPlaying();
     }
 
-    private void stopPlayback() {
-        if (mediaPlayer != null) {
-            if (mediaPlayer.isPlaying()) {
-                mediaPlayer.stop();
+    public void stopPlayback() {
+        try {
+            if (mediaPlayer != null) {
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.stop();
+                }
+                mediaPlayer.reset();
+                mediaPlayer.release();
+                mediaPlayer = null;
             }
-            mediaPlayer.reset();
+            
+            isPlaying = false;
+            currentSong = null;
+            
+            // Broadcast updates
+            broadcastStatus(false);
+            Intent hideIntent = new Intent("MINI_PLAYER_UPDATE");
+            hideIntent.putExtra("show", false);
+            sendBroadcast(hideIntent);
+            
+            // Stop foreground service
+            stopForeground(true);
+            
+            // Stop self if no other components are bound
+            if (!isBound()) {
+                stopSelf();
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error in stopPlayback", e);
         }
-        // Notify ApiMusicService
-        ApiMusicService.setLocalMusicPlaying(false);
-        
-        isPlaying = false;
-        stopForeground(true);
-        NotificationManager notificationManager = 
-            (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        notificationManager.cancel(NOTIFICATION_ID);
-        stopSelf();
+    }
+
+    private boolean isBound() {
+        return localBinder.getBindCount() > 0;
+    }
+
+    public void setCallback(MusicServiceCallback callback) {
+        this.callback = callback;
     }
 } 

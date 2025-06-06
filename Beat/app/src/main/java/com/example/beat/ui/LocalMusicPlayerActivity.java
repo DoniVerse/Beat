@@ -11,6 +11,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -24,11 +25,16 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.request.transition.Transition;
 import com.example.beat.R;
 import com.example.beat.data.database.AppDatabase;
@@ -38,12 +44,18 @@ import com.example.beat.data.entities.Playlist;
 import com.example.beat.data.dao.PlaylistDao;
 import com.example.beat.data.entities.PlaylistSong;
 import com.example.beat.services.MusicService;
+import com.example.beat.services.MusicServiceCallback;
+import com.example.beat.adapter.SongAdapter;
+import com.example.beat.adapter.OnSongSelectedListener;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class LocalMusicPlayerActivity extends AppCompatActivity {
+public class LocalMusicPlayerActivity extends AppCompatActivity implements OnSongSelectedListener {
+
     private static final String TAG = "LocalMusicPlayer";
 
     private TextView songTitle;
@@ -52,6 +64,8 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
     private TextView totalTimeTextView;
     private SeekBar seekBar;
     private ImageButton playPauseBtn, prevBtn, nextBtn, shuffleBtn, repeatBtn, addToPlaylistBtn;
+    private RecyclerView songRecyclerView;
+    private SongAdapter songAdapter;
 
     private LocalSong currentSong;
     private List<LocalSong> songList;
@@ -80,7 +94,7 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
                 Log.d(TAG, "Service connected successfully");
                 
                 // Set up callback for notification controls
-                musicService.setCallback(new MusicService.ServiceCallback() {
+                musicService.setCallback(new MusicServiceCallback() {
                     @Override
                     public void onNext() {
                         playNext();
@@ -92,7 +106,7 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
                     }
                 });
                 
-                // Start playing the current song if one is loaded
+                // If we have a current song, play it
                 if (currentSong != null) {
                     musicService.playSong(currentSong);
                     updatePlayPauseButton(true);
@@ -110,6 +124,7 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         public void onServiceDisconnected(ComponentName name) {
             musicService = null;
             serviceBound = false;
+            stopProgressUpdates();
             Log.d(TAG, "Service disconnected");
         }
     };
@@ -179,6 +194,11 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
             initializeViews();
             setupClickListeners();
 
+            // Initialize the adapter with this activity as the listener
+            if (songAdapter != null) {
+                songAdapter.setOnSongSelectedListener(this);
+            }
+
             // Handle intent
             handlePlaybackIntent(getIntent());
             
@@ -203,6 +223,15 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
             shuffleBtn = findViewById(R.id.shuffle_btn);
             repeatBtn = findViewById(R.id.repeat_btn);
             addToPlaylistBtn = findViewById(R.id.add_to_playlist_btn);
+            songRecyclerView = findViewById(R.id.song_recycler_view);
+            
+            // Initialize RecyclerView
+            songRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+            if (songList != null) {
+                songAdapter = new SongAdapter(songList);
+                songAdapter.setOnSongSelectedListener(this);
+                songRecyclerView.setAdapter(songAdapter);
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error initializing views: " + e.getMessage());
             throw e;
@@ -438,6 +467,22 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onSongSelected(int position) {
+        if (position < 0 || position >= songList.size()) {
+            return;
+        }
+        currentPosition = position;
+        currentSong = songList.get(position);
+        updateSongInfo();
+        if (musicService != null) {
+            musicService.playSong(currentSong);
+            isPlaying = true;
+            updatePlayPauseButton(true);
+            startProgressUpdates();
+        }
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         isActivityVisible = true;
@@ -451,6 +496,20 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         super.onPause();
         isActivityVisible = false;
         stopProgressUpdates();
+        
+        // Save current position
+        if (currentSong != null) {
+            try {
+                SharedPreferences prefs = getSharedPreferences("MusicPlayer", MODE_PRIVATE);
+                prefs.edit()
+                    .putInt("lastPosition", currentPosition)
+                    .putLong("lastSongId", currentSong.getSongId())
+                    .apply();
+                Log.d(TAG, "Saved song state - position: " + currentPosition + ", id: " + currentSong.getSongId());
+            } catch (Exception e) {
+                Log.e(TAG, "Error saving song state", e);
+            }
+        }
     }
 
     @Override
@@ -487,6 +546,15 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
             }
             
             handler = null;
+            
+            // Stop playback if activity is being destroyed
+            if (isFinishing() && musicService != null) {
+                musicService.stopPlayback();
+            }
+            
+            // Clear references
+            musicService = null;
+            currentSong = null;
         } catch (Exception e) {
             Log.e(TAG, "Error in onDestroy: " + e.getMessage());
         }
@@ -521,6 +589,10 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         Glide.with(this).clear(albumArtImageView);
+        isActivityVisible = false;
+        
+        // Stop progress updates when activity is not visible
+        stopProgressUpdates();
     }
 
     @Override
@@ -777,6 +849,42 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e(TAG, "Error getting artist name: " + e.getMessage());
             return "Unknown Artist";
+        }
+    }
+
+    private void playSelectedSong(int position) {
+        if (position < 0 || position >= songList.size()) {
+            Log.e(TAG, "Invalid song position: " + position);
+            return;
+        }
+
+        try {
+            // Stop current playback if any
+            if (musicService != null) {
+                musicService.stopPlayback();
+            }
+
+            // Update current position and song
+            currentPosition = position;
+            currentSong = songList.get(currentPosition);
+            
+            // Update UI first
+            updateSongInfo();
+            updatePlayPauseButton(true);
+            isPlaying = true;
+            
+            // Start playing the new song
+            if (musicService != null) {
+                musicService.playSong(currentSong);
+                startProgressUpdates();
+            } else {
+                // If service is not bound, bind it first
+                Intent intent = new Intent(this, MusicService.class);
+                bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error playing selected song", e);
+            Toast.makeText(this, "Error playing song", Toast.LENGTH_SHORT).show();
         }
     }
 }
