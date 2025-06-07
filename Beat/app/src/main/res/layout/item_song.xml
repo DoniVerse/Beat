@@ -7,7 +7,8 @@
     android:layout_marginVertical="2dp"
     app:cardCornerRadius="8dp"
     app:cardElevation="2dp"
-    app:cardUseCompatPadding="true">
+    app:cardUseCompatPadding="true"
+    android:background="#80000040">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -22,7 +23,8 @@
             android:layout_marginEnd="8dp"
             android:scaleType="centerCrop"
             app:shapeAppearanceOverlay="@style/ShapeAppearance.App.MediumComponent"
-            android:src="@drawable/default_album_art" />
+            android:src="@drawable/default_album_art"
+            android:backgroundTint="#80000040" />
 
         <LinearLayout
             android:layout_width="0dp"

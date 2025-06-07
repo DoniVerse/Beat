@@ -106,6 +106,11 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
         nextButton = findViewById(R.id.nextButton);
         repeatButton = findViewById(R.id.repeatButton);
         addToPlaylistButton = findViewById(R.id.addToPlaylistButton);
+
+        // Initialize play/pause button to show play icon
+        if (playPauseButton != null) {
+            playPauseButton.setImageResource(R.drawable.ic_play);
+        }
     }
 
     private void extractIntentData() {
@@ -292,6 +297,8 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
                 android.util.Log.d("PlayerActivity", "Starting new playback");
                 try {
                     musicServiceConnection.playMusic(streamUrl, trackTitle, artistName, albumArtUrl);
+                    // Initialize with play icon since we're starting new playback
+                    playPauseButton.setImageResource(R.drawable.ic_play);
                     updatePlayPauseButton();
                     startSeekBarUpdate();
                 } catch (Exception e) {
@@ -366,10 +373,16 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
     }
 
     private void updatePlayPauseButton() {
-        if (musicServiceConnection != null && musicServiceConnection.isPlaying()) {
-            playPauseButton.setImageResource(R.drawable.ic_pause);
-            startSeekBarUpdate();
+        if (musicServiceConnection != null) {
+            if (musicServiceConnection.isPlaying()) {
+                playPauseButton.setImageResource(R.drawable.ic_pause);
+                startSeekBarUpdate();
+            } else {
+                playPauseButton.setImageResource(R.drawable.ic_play);
+                stopSeekBarUpdate();
+            }
         } else {
+            // If service is not connected, show play icon
             playPauseButton.setImageResource(R.drawable.ic_play);
             stopSeekBarUpdate();
         }

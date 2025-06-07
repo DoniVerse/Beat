@@ -225,6 +225,9 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
                 isPlaying = true;
                 playPauseBtn.setImageResource(R.drawable.ic_pause);
             }
+        } else {
+            // If no song is playing, start the current song
+            setupPlayer();
         }
     }
 
