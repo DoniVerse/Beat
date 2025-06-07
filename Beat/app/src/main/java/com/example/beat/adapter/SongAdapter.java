@@ -12,14 +12,12 @@ import com.example.beat.R;
 import com.example.beat.data.entities.LocalSong;
 import com.example.beat.ui.LocalMusicPlayerActivity;
 import com.google.android.material.imageview.ShapeableImageView;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder> {
+    private OnSongSelectedListener listener;
     private List<LocalSong> songs;
-    private String contextType = "LOCAL_SONGS"; // Default context
-    private int contextId = -1; // For artist ID, playlist ID, etc.
 
     public SongAdapter() {
         this.songs = new ArrayList<>();
@@ -29,15 +27,8 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
         this.songs = songs != null ? new ArrayList<>(songs) : new ArrayList<>();
     }
 
-    public SongAdapter(List<LocalSong> songs, String contextType) {
-        this.songs = songs != null ? new ArrayList<>(songs) : new ArrayList<>();
-        this.contextType = contextType;
-    }
-
-    public SongAdapter(List<LocalSong> songs, String contextType, int contextId) {
-        this.songs = songs != null ? new ArrayList<>(songs) : new ArrayList<>();
-        this.contextType = contextType;
-        this.contextId = contextId;
+    public void setOnSongSelectedListener(OnSongSelectedListener listener) {
+        this.listener = listener;
     }
 
     public void updateSongs(List<LocalSong> newSongs) {
@@ -79,22 +70,15 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
                     LocalSong clickedSong = songs.get(position);
-                    // Use PlayerActivityWithService for background playback
-                    Intent intent = new Intent(itemView.getContext(), com.example.beat.ui.PlayerActivityWithService.class);
-                    intent.putExtra("title", clickedSong.getTitle());
-                    intent.putExtra("artist", "Local Artist"); // You can improve this by getting actual artist name
-                    intent.putExtra("albumArtUrl", clickedSong.getAlbumArtUri() != null ? clickedSong.getAlbumArtUri() : "");
-                    intent.putExtra("streamUrl", clickedSong.getFilePath()); // Use file path for local songs
-
-                    // Pass context information to load the correct playlist
-                    intent.putExtra("POSITION", position);
-                    intent.putExtra("TOTAL_SONGS", songs.size());
-                    intent.putExtra("CONTEXT_TYPE", contextType);
-                    if (contextId != -1) {
-                        intent.putExtra("CONTEXT_ID", contextId);
+                    if (listener != null) {
+                        listener.onSongSelected(position);
+                    } else {
+                        // Fallback to starting a new activity if current activity is not set
+                        Intent intent = new Intent(itemView.getContext(), LocalMusicPlayerActivity.class);
+                        intent.putParcelableArrayListExtra("SONG_LIST", (ArrayList<LocalSong>) songs);
+                        intent.putExtra("POSITION", position);
+                        itemView.getContext().startActivity(intent);
                     }
-
-                    itemView.getContext().startActivity(intent);
                 }
             });
         }
