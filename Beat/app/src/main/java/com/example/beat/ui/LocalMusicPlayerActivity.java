@@ -103,8 +103,8 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         prevBtn.setOnClickListener(v -> playPrevious());
         nextBtn.setOnClickListener(v -> playNext());
         playPauseBtn.setOnClickListener(v -> togglePlayPause());
-        shuffleBtn.setOnClickListener(v -> isShuffle = !isShuffle);
-        repeatBtn.setOnClickListener(v -> isRepeat = !isRepeat);
+        shuffleBtn.setOnClickListener(v -> toggleShuffle());
+        repeatBtn.setOnClickListener(v -> toggleRepeat());
         
         addToPlaylistBtn.setOnClickListener(v -> showAddToPlaylistDialog());
 

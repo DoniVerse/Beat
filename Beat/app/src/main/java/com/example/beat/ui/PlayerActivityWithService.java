@@ -297,10 +297,12 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
                 android.util.Log.d("PlayerActivity", "Starting new playback");
                 try {
                     musicServiceConnection.playMusic(streamUrl, trackTitle, artistName, albumArtUrl);
-                    // Initialize with play icon since we're starting new playback
-                    playPauseButton.setImageResource(R.drawable.ic_play);
-                    updatePlayPauseButton();
-                    startSeekBarUpdate();
+                    // Don't set button state immediately - let updatePlayPauseButton handle it
+                    // Add a small delay to allow service to start playing
+                    handler.postDelayed(() -> {
+                        updatePlayPauseButton();
+                        startSeekBarUpdate();
+                    }, 500); // 500ms delay to allow service to start
                 } catch (Exception e) {
                     android.util.Log.e("PlayerActivity", "Error starting playback", e);
                     android.widget.Toast.makeText(this, "Error playing song: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
@@ -503,6 +505,9 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
 
                     // Update mini player with new track info
                     updateMiniPlayer();
+
+                    // Update button state after a short delay to allow service to start
+                    handler.postDelayed(() -> updatePlayPauseButton(), 500);
                 } catch (Exception e) {
                     android.util.Log.e("PlayerActivity", "Error playing song", e);
                     android.widget.Toast.makeText(this, "Error playing: " + trackTitle, android.widget.Toast.LENGTH_SHORT).show();
@@ -714,10 +719,13 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
     protected void onResume() {
         super.onResume();
         if (isServiceReady) {
-            updatePlayPauseButton();
-            if (musicServiceConnection.isPlaying()) {
-                startSeekBarUpdate();
-            }
+            // Add a small delay to ensure service state is accurate
+            handler.postDelayed(() -> {
+                updatePlayPauseButton();
+                if (musicServiceConnection != null && musicServiceConnection.isPlaying()) {
+                    startSeekBarUpdate();
+                }
+            }, 100); // Small delay to ensure service state is current
         }
     }
 

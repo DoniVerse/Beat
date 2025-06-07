@@ -95,10 +95,10 @@ public class PlayerActivityLocal extends AppCompatActivity {
     private void togglePlayPause() {
         if (mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
-            playPauseBtn.setImageResource(R.drawable.ic_pause);
+            playPauseBtn.setImageResource(R.drawable.ic_play);
         } else {
             mediaPlayer.start();
-            playPauseBtn.setImageResource(R.drawable.ic_play);
+            playPauseBtn.setImageResource(R.drawable.ic_pause);
         }
     }
 

@@ -120,12 +120,12 @@
         app:layout_constraintTop_toBottomOf="@id/seekBar"
         tools:text="3:45" />
 
-    <!-- Controls -->
+    <!-- Secondary Controls Row -->
     <LinearLayout
-        android:id="@+id/controlsLayout"
+        android:id="@+id/secondaryControlsLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="16dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
@@ -134,47 +134,19 @@
 
         <ImageButton
             android:id="@+id/shuffleButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginHorizontal="24dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/shuffle_button_desc"
-            android:src="@drawable/ic_shuffle" 
+            android:src="@drawable/ic_shuffle"
             app:tint="@color/text_secondary" />
 
         <ImageButton
-            android:id="@+id/previousButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="16dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/previous_button_desc"
-            android:src="@drawable/ic_skip_previous" 
-            app:tint="@color/text_primary" />
-
-        <ImageButton
-            android:id="@+id/playPauseButton"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:layout_marginHorizontal="24dp"
-            android:background="@drawable/play_button_background" 
-            android:contentDescription="@string/play_pause_button_desc"
-            android:src="@drawable/ic_play_arrow" 
-            app:tint="@color/text_primary" />
-
-        <ImageButton
-            android:id="@+id/nextButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="16dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/next_button_desc"
-            android:src="@drawable/ic_skip_next" 
-            app:tint="@color/text_primary" />
-
-        <ImageButton
             android:id="@+id/repeatButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginHorizontal="24dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/repeat_button_desc"
             android:src="@drawable/ic_repeat"
@@ -182,13 +154,57 @@
 
         <ImageButton
             android:id="@+id/addToPlaylistButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="16dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginHorizontal="24dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Add to Playlist"
             android:src="@drawable/ic_playlist"
             app:tint="@color/text_secondary" />
+
+    </LinearLayout>
+
+    <!-- Primary Controls Row -->
+    <LinearLayout
+        android:id="@+id/controlsLayout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/secondaryControlsLayout">
+
+        <ImageButton
+            android:id="@+id/previousButton"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginHorizontal="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/previous_button_desc"
+            android:src="@drawable/ic_skip_previous"
+            app:tint="@color/text_primary" />
+
+        <ImageButton
+            android:id="@+id/playPauseButton"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginHorizontal="32dp"
+            android:background="@drawable/play_button_background"
+            android:contentDescription="@string/play_pause_button_desc"
+            android:src="@drawable/ic_play_arrow"
+            app:tint="@color/text_primary" />
+
+        <ImageButton
+            android:id="@+id/nextButton"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginHorizontal="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/next_button_desc"
+            android:src="@drawable/ic_skip_next"
+            app:tint="@color/text_primary" />
 
     </LinearLayout>
 
