@@ -177,7 +177,17 @@
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/repeat_button_desc"
-            android:src="@drawable/ic_repeat" 
+            android:src="@drawable/ic_repeat"
+            app:tint="@color/text_secondary" />
+
+        <ImageButton
+            android:id="@+id/addToPlaylistButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="16dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Add to Playlist"
+            android:src="@drawable/ic_playlist"
             app:tint="@color/text_secondary" />
 
     </LinearLayout>

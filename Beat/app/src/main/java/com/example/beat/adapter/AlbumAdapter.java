@@ -1,6 +1,5 @@
 package com.example.beat.adapter;
 
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,11 +12,10 @@ import com.example.beat.MainActivity;
 import com.example.beat.R;
 import com.example.beat.data.entities.AlbumWithSongs;
 import com.example.beat.data.entities.LocalSong;
-import com.example.beat.ui.LocalMusicPlayerActivity;
+import com.example.beat.ui.AlbumSongsFragment;
 import com.google.android.material.imageview.ShapeableImageView;
 import android.net.Uri;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHolder> {
@@ -68,12 +66,9 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
                     AlbumWithSongs clickedAlbum = albums.get(position);
-                    if (clickedAlbum.songs != null && !clickedAlbum.songs.isEmpty()) {
-                        Intent intent = new Intent(itemView.getContext(), LocalMusicPlayerActivity.class);
-                        intent.putParcelableArrayListExtra("SONG_LIST", new ArrayList<>(clickedAlbum.songs));
-                        intent.putExtra("POSITION", 0);
-                        itemView.getContext().startActivity(intent);
-                    }
+                    // Navigate to album songs fragment
+                    AlbumSongsFragment fragment = AlbumSongsFragment.newInstance(clickedAlbum);
+                    ((MainActivity) itemView.getContext()).navigateToFragment(fragment);
                 }
             });
         }

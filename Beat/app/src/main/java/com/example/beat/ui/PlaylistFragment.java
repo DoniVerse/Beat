@@ -32,7 +32,8 @@ public class PlaylistFragment extends Fragment {
     private RecyclerView recyclerView;
     private PlaylistAdapter playlistAdapter;
     private int userId;
-    private AppDatabase database;
+    // Make database reference transient to avoid serialization issues
+    private transient AppDatabase database;
 
     private void createNewPlaylist(String name) {
         new Thread(() -> {

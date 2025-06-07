@@ -20,9 +20,10 @@ import com.example.beat.data.dao.MusicDao;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LocalSongsFragment extends Fragment {
-    private AppDatabase database;
-    private MusicDao musicDao;
+public class  LocalSongsFragment extends Fragment {
+    // Make database references transient to avoid serialization issues
+    private transient AppDatabase database;
+    private transient MusicDao musicDao;
     private int userId;
     private RecyclerView recyclerView;
     private SongAdapter songAdapter;
@@ -116,5 +117,20 @@ public class LocalSongsFragment extends Fragment {
 
     public void refreshSongs() {
         loadSongs();
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        // Don't save any state to avoid serialization issues
+        // super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    public void onViewStateRestored(Bundle savedInstanceState) {
+        super.onViewStateRestored(savedInstanceState);
+        // Reload data instead of restoring state
+        if (isAdded() && getContext() != null) {
+            loadSongs();
+        }
     }
 }

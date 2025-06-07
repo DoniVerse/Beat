@@ -1,14 +1,7 @@
 package com.example.beat;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
 import androidx.core.graphics.Insets;
@@ -20,30 +13,27 @@ import androidx.fragment.app.FragmentTransaction;
 import com.example.beat.data.database.AppDatabase;
 import com.example.beat.permissions.PermissionManager;
 import com.example.beat.scanner.MediaStoreScanner;
-import com.example.beat.services.MusicService;
 import com.example.beat.ui.AlbumFragment;
 import com.example.beat.ui.ArtistFragment;
+//import com.example.beat.ui.HomeFragment;
 import com.example.beat.ui.HomeFragment;
-import com.example.beat.ui.LocalMusicPlayerActivity;
 import com.example.beat.ui.LocalSongsFragment;
 import com.example.beat.ui.PlaylistFragment;
+import com.example.beat.ui.MiniPlayerManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import androidx.activity.EdgeToEdge;
-import com.bumptech.glide.Glide;
+import android.widget.FrameLayout;
 
 public class MainActivity extends AppCompatActivity {
     private int userId;  // class-level field
-    private View miniPlayer;
-    private ImageView miniAlbumArt;
-    private TextView miniSongTitle;
-    private TextView miniArtistName;
-    private ImageButton miniPlayPauseButton;
-    private ImageButton miniPrevButton;
-    private ImageButton miniNextButton;
+    private FrameLayout miniPlayerContainer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Set current instance for static access
+        currentInstance = this;
 
         // Assign to field, NOT local variable
         userId = getSharedPreferences("UserPrefs", MODE_PRIVATE).getInt("userId", -1);
@@ -90,10 +80,13 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // Set initial fragment to HomeFragment
-        navigateToFragment(new HomeFragment());
+//        navigateToFragment(new HomeFragment());
         
         // Select the home item in the bottom navigation
         bottomNavigationView.setSelectedItemId(R.id.navigation_home);
+
+        // Initialize mini player container
+        miniPlayerContainer = findViewById(R.id.mini_player_container);
 
         // Request storage permissions and initialize media scanning
         if (PermissionManager.hasStoragePermissions(this)) {
@@ -114,104 +107,6 @@ public class MainActivity extends AppCompatActivity {
         } else {
             PermissionManager.requestStoragePermissions(this);
         }
-
-        // Initialize mini player views
-        miniPlayer = findViewById(R.id.mini_player_container);
-        miniAlbumArt = findViewById(R.id.mini_album_art);
-        miniSongTitle = findViewById(R.id.mini_song_title);
-        miniArtistName = findViewById(R.id.mini_artist_name);
-        miniPlayPauseButton = findViewById(R.id.mini_play_pause_button);
-        miniPrevButton = findViewById(R.id.mini_prev_button);
-        miniNextButton = findViewById(R.id.mini_next_button);
-
-        // Register broadcast receiver
-        IntentFilter filter = new IntentFilter();
-        filter.addAction("MINI_PLAYER_UPDATE");
-        filter.addAction("PLAYBACK_STATUS");
-        registerReceiver(playbackReceiver, filter);
-
-        // Set up mini player click listeners
-        miniPlayer.setOnClickListener(v -> {
-            // Launch full player
-            Intent intent = new Intent(this, LocalMusicPlayerActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-            startActivity(intent);
-        });
-
-        miniPlayPauseButton.setOnClickListener(v -> {
-            // Toggle play/pause
-            Intent intent = new Intent(isPlaying() ? MusicService.ACTION_PAUSE : MusicService.ACTION_PLAY);
-            sendBroadcast(intent);
-        });
-
-        miniPrevButton.setOnClickListener(v -> {
-            Intent intent = new Intent(MusicService.ACTION_PREVIOUS);
-            sendBroadcast(intent);
-        });
-
-        miniNextButton.setOnClickListener(v -> {
-            Intent intent = new Intent(MusicService.ACTION_NEXT);
-            sendBroadcast(intent);
-        });
-    }
-
-    private BroadcastReceiver playbackReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getAction() == null) return;
-            
-            switch (intent.getAction()) {
-                case "MINI_PLAYER_UPDATE":
-                    updateMiniPlayer(intent);
-                    break;
-                case "PLAYBACK_STATUS":
-                    boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
-                    updatePlayPauseButton(isPlaying);
-                    break;
-            }
-        }
-    };
-
-    private void updatePlayPauseButton(boolean playing) {
-        miniPlayPauseButton.setImageResource(playing ? R.drawable.ic_pause : R.drawable.ic_play);
-    }
-
-    private boolean isPlaying() {
-        return miniPlayPauseButton.getDrawable().getConstantState().equals(
-            getResources().getDrawable(R.drawable.ic_pause).getConstantState()
-        );
-    }
-
-    private void updateMiniPlayer(Intent intent) {
-        String title = intent.getStringExtra("title");
-        String artist = intent.getStringExtra("artist");
-        String albumArtUri = intent.getStringExtra("albumArtUri");
-        boolean show = intent.getBooleanExtra("show", false);
-        boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
-
-        if (show) {
-            miniPlayer.setVisibility(View.VISIBLE);
-            miniSongTitle.setText(title);
-            miniArtistName.setText(artist);
-            updatePlayPauseButton(isPlaying);
-
-            if (albumArtUri != null && !albumArtUri.isEmpty()) {
-                Glide.with(this)
-                    .load(albumArtUri)
-                    .error(R.drawable.default_artist)
-                    .into(miniAlbumArt);
-            } else {
-                miniAlbumArt.setImageResource(R.drawable.default_artist);
-            }
-        } else {
-            miniPlayer.setVisibility(View.GONE);
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(playbackReceiver);
     }
 
     @Override
@@ -242,6 +137,91 @@ public class MainActivity extends AppCompatActivity {
             .replace(R.id.fragment_container, fragment)
             .addToBackStack(null)
             .commit();
+    }
+
+    public void showMiniPlayer() {
+        if (miniPlayerContainer != null) {
+            MiniPlayerManager.getInstance(this).showMiniPlayer(miniPlayerContainer);
+        }
+    }
+
+    public void hideMiniPlayer() {
+        if (miniPlayerContainer != null) {
+            MiniPlayerManager.getInstance(this).hideMiniPlayer();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Check if mini player should be shown when returning to MainActivity
+        showMiniPlayerIfNeeded();
+    }
+
+    private void showMiniPlayerIfNeeded() {
+        try {
+            MiniPlayerManager miniPlayerManager = MiniPlayerManager.getInstance(this);
+            if (miniPlayerManager.hasTrackInfo() && miniPlayerContainer != null) {
+                miniPlayerManager.showMiniPlayer(miniPlayerContainer);
+            }
+        } catch (Exception e) {
+            // Ignore errors
+        }
+    }
+
+    // Method to manually show mini player with track info
+    public void showMiniPlayerWithTrack(String title, String artist, String albumArt) {
+        try {
+            android.util.Log.d("MainActivity", "showMiniPlayerWithTrack called with: " + title);
+
+            // Ensure we have the container
+            if (miniPlayerContainer == null) {
+                miniPlayerContainer = findViewById(R.id.mini_player_container);
+                android.util.Log.d("MainActivity", "Found container: " + miniPlayerContainer);
+            }
+
+            if (miniPlayerContainer != null) {
+                // Force layout update
+                miniPlayerContainer.requestLayout();
+
+                android.util.Log.d("MainActivity", "Container dimensions before: " +
+                    miniPlayerContainer.getWidth() + "x" + miniPlayerContainer.getHeight());
+
+                MiniPlayerManager miniPlayerManager = MiniPlayerManager.getInstance(this);
+                miniPlayerManager.updateTrackInfo(title, artist, albumArt);
+                miniPlayerManager.showMiniPlayer(miniPlayerContainer);
+
+                android.util.Log.d("MainActivity", "Mini player shown successfully");
+            } else {
+                android.util.Log.e("MainActivity", "Mini player container is null!");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Error showing mini player", e);
+        }
+    }
+
+    // Static reference to current MainActivity instance
+    private static MainActivity currentInstance;
+
+    // Static method to show mini player from any activity
+    public static void showMiniPlayerStatic(String title, String artist, String albumArt) {
+        if (currentInstance != null) {
+            currentInstance.runOnUiThread(() -> {
+                // Add a small delay to ensure layout is complete
+                currentInstance.findViewById(android.R.id.content).post(() -> {
+                    currentInstance.showMiniPlayerWithTrack(title, artist, albumArt);
+                });
+            });
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Clear static reference to prevent memory leaks
+        if (currentInstance == this) {
+            currentInstance = null;
+        }
     }
 
     @Override

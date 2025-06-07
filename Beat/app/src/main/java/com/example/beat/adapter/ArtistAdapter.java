@@ -1,6 +1,5 @@
 package com.example.beat.adapter;
 
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,12 +8,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.beat.R;
 import com.example.beat.data.entities.Artist;
-import com.example.beat.data.entities.LocalSong;
-import com.example.beat.ui.LocalMusicPlayerActivity;
 import com.google.android.material.imageview.ShapeableImageView;
 import android.net.Uri;
-
-import java.util.ArrayList;
 import java.util.List;
 
 public class ArtistAdapter extends RecyclerView.Adapter<ArtistAdapter.ArtistViewHolder> {
@@ -22,19 +17,12 @@ public class ArtistAdapter extends RecyclerView.Adapter<ArtistAdapter.ArtistView
     private final OnArtistClickListener listener;
 
     public interface OnArtistClickListener {
-        void onArtistClick(Artist artist, List<LocalSong> songs);
+        void onArtistClick(Artist artist);
     }
-
-    private List<LocalSong> artistSongs;
 
     public ArtistAdapter(List<Artist> artists, OnArtistClickListener listener) {
         this.artists = artists;
         this.listener = listener;
-        this.artistSongs = new ArrayList<>();
-    }
-
-    public void setArtistSongs(List<LocalSong> songs) {
-        this.artistSongs = songs;
     }
 
     @NonNull
@@ -69,26 +57,9 @@ public class ArtistAdapter extends RecyclerView.Adapter<ArtistAdapter.ArtistView
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
-                    Artist artist = artists.get(position);
-                    List<LocalSong> artistSongs = getArtistSongs(artist.artistId);
-                    if (artistSongs != null && !artistSongs.isEmpty()) {
-                        Intent intent = new Intent(itemView.getContext(), LocalMusicPlayerActivity.class);
-                        intent.putParcelableArrayListExtra("SONG_LIST", new ArrayList<>(artistSongs));
-                        intent.putExtra("POSITION", 0);
-                        itemView.getContext().startActivity(intent);
-                    }
+                    listener.onArtistClick(artists.get(position));
                 }
             });
-        }
-
-        private List<LocalSong> getArtistSongs(int artistId) {
-            List<LocalSong> songs = new ArrayList<>();
-            for (LocalSong song : artistSongs) {
-                if (song.getArtistId() != null && song.getArtistId() == artistId) {
-                    songs.add(song);
-                }
-            }
-            return songs;
         }
 
         public void bind(Artist artist) {

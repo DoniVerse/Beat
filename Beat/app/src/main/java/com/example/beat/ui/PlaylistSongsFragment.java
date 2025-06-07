@@ -15,18 +15,17 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.beat.R;
 import com.example.beat.adapter.SongAdapter;
-import com.example.beat.data.database.AppDatabase;
 import com.example.beat.data.entities.PlaylistWithSongs;
 import com.example.beat.data.entities.LocalSong;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class PlaylistSongsFragment extends Fragment {
     private TextView playlistName;
     private RecyclerView recyclerView;
     private SongAdapter songAdapter;
-    private PlaylistWithSongs playlist;
+    // Make complex object transient to avoid serialization issues
+    private transient PlaylistWithSongs playlist;
 
     public static PlaylistSongsFragment newInstance(PlaylistWithSongs playlist) {
         PlaylistSongsFragment fragment = new PlaylistSongsFragment();
@@ -43,46 +42,20 @@ public class PlaylistSongsFragment extends Fragment {
         playlistName = view.findViewById(R.id.playlist_name);
         recyclerView = view.findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        
-        // Get playlist from arguments
+        setupRecyclerView();
+        return view;
+    }
+
+    private void setupRecyclerView() {
         if (getArguments() != null) {
             playlist = (PlaylistWithSongs) getArguments().getSerializable("playlist");
             if (playlist != null) {
                 playlistName.setText(playlist.playlist.name);
-                loadPlaylistSongs();
+                // Pass playlist context to SongAdapter
+                songAdapter = new SongAdapter(playlist.songs, "PLAYLIST_SONGS", playlist.playlist.playlistId);
+                recyclerView.setAdapter(songAdapter);
             }
         }
-        
-        return view;
-    }
-
-    private void loadPlaylistSongs() {
-        if (playlist == null || getContext() == null) return;
-
-        new Thread(() -> {
-            try {
-                AppDatabase db = AppDatabase.getInstance(getContext());
-                List<LocalSong> songs = db.musicDao().getPlaylistSongs(playlist.playlist.getPlaylistId());
-                
-                if (getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        if (songs != null && !songs.isEmpty()) {
-                            songAdapter = new SongAdapter(songs);
-                            recyclerView.setAdapter(songAdapter);
-                        } else {
-                            Toast.makeText(getContext(), "No songs in playlist", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                if (getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        Toast.makeText(getContext(), "Error loading playlist songs", Toast.LENGTH_SHORT).show();
-                    });
-                }
-            }
-        }).start();
     }
 
     public void updatePlaylist(PlaylistWithSongs playlist) {

@@ -24,7 +24,8 @@ public class ArtistFragment extends Fragment {
     private RecyclerView recyclerView;
     private ArtistWithSongsAdapter artistAdapter;
     private int userId;
-    private AppDatabase database;
+    // Make database reference transient to avoid serialization issues
+    private transient AppDatabase database;
     private List<ArtistWithSongs> allArtists;  // Store all artists for filtering
 
     @Override

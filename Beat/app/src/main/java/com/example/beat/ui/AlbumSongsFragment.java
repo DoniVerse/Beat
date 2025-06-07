@@ -49,7 +49,10 @@ public class AlbumSongsFragment extends Fragment {
             album = getArguments().getParcelable("album");
             if (album != null) {
                 albumName.setText(album.album.name);
-                songAdapter = new SongAdapter(album.songs);
+                // Debug logging
+                android.util.Log.d("AlbumSongsFragment", "Album: " + album.album.name + ", ID: " + album.album.albumId + ", Songs: " + album.songs.size());
+                // Pass album context to SongAdapter
+                songAdapter = new SongAdapter(album.songs, "ALBUM_SONGS", album.album.albumId);
                 recyclerView.setAdapter(songAdapter);
             }
         }

@@ -1,6 +1,5 @@
 package com.example.beat.adapter;
 
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,7 +12,6 @@ import com.example.beat.MainActivity;
 import com.example.beat.R;
 import com.example.beat.data.entities.PlaylistWithSongs;
 import com.example.beat.ui.PlaylistSongsFragment;
-import com.example.beat.ui.LocalMusicPlayerActivity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,12 +71,8 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.Playli
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
                     PlaylistWithSongs playlist = adapter.playlists.get(position);
-                    if (playlist.songs != null && !playlist.songs.isEmpty()) {
-                        Intent intent = new Intent(itemView.getContext(), LocalMusicPlayerActivity.class);
-                        intent.putParcelableArrayListExtra("SONG_LIST", new ArrayList<>(playlist.songs));
-                        intent.putExtra("POSITION", 0);
-                        itemView.getContext().startActivity(intent);
-                    }
+                    PlaylistSongsFragment fragment = PlaylistSongsFragment.newInstance(playlist);
+                    ((MainActivity) itemView.getContext()).navigateToFragment(fragment);
                 }
             });
         }

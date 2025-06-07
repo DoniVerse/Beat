@@ -22,7 +22,8 @@ public class ArtistSongsFragment extends Fragment {
     private TextView artistName;
     private RecyclerView recyclerView;
     private SongAdapter songAdapter;
-    private ArtistWithSongs artist;
+    // Make complex object transient to avoid serialization issues
+    private transient ArtistWithSongs artist;
 
     public static ArtistSongsFragment newInstance(ArtistWithSongs artist) {
         ArtistSongsFragment fragment = new ArtistSongsFragment();
@@ -48,7 +49,8 @@ public class ArtistSongsFragment extends Fragment {
             artist = getArguments().getParcelable("artist");
             if (artist != null) {
                 artistName.setText(artist.artist.name);
-                songAdapter = new SongAdapter(artist.songs);
+                // Pass artist context to SongAdapter
+                songAdapter = new SongAdapter(artist.songs, "ARTIST_SONGS", artist.artist.artistId);
                 recyclerView.setAdapter(songAdapter);
             }
         }

@@ -15,7 +15,7 @@ public class SignUpActivity extends AppCompatActivity {
     private TextInputEditText nameEditText;
     private TextInputEditText emailEditText;
     private TextInputEditText passwordEditText;
-private TextInputEditText confirmPasswordEditText;
+    private TextInputEditText confirmPasswordEditText;
     private MaterialButton signUpButton;
     private MaterialButton backButton;
     private MusicDao musicDao;

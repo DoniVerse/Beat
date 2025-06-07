@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey;
 import androidx.room.Index;
 import android.os.Parcel;
 import android.os.Parcelable;
+import java.io.Serializable;
 
 @Entity(tableName = "local_song",
         foreignKeys = {
@@ -20,7 +21,8 @@ import android.os.Parcelable;
                 @Index(value = {"filePath", "userId"}, unique = true)
         }
 )
-public class LocalSong implements Parcelable {
+public class LocalSong implements Parcelable, Serializable {
+    private static final long serialVersionUID = 1L;
     protected LocalSong(Parcel in) {
         songId = in.readInt();
         title = in.readString();

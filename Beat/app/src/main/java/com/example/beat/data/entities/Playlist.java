@@ -8,9 +8,13 @@ import com.example.beat.data.Converters;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.io.Serializable;
+import android.os.Parcel;
+import android.os.Parcelable;
 
 @Entity(tableName = "playlist")
-public class Playlist {
+public class Playlist implements Parcelable, Serializable {
+    private static final long serialVersionUID = 1L;
     @PrimaryKey(autoGenerate = true)
     public int playlistId;
     public String name;
@@ -59,5 +63,39 @@ public class Playlist {
 
     public void setUserId(int userId) {
         this.userId = userId;
+    }
+
+    // Parcelable implementation
+    protected Playlist(Parcel in) {
+        playlistId = in.readInt();
+        name = in.readString();
+        userId = in.readInt();
+        songIds = new ArrayList<>();
+        in.readList(songIds, Integer.class.getClassLoader());
+    }
+
+    public static final Creator<Playlist> CREATOR = new Creator<Playlist>() {
+        @Override
+        public Playlist createFromParcel(Parcel in) {
+            return new Playlist(in);
+        }
+
+        @Override
+        public Playlist[] newArray(int size) {
+            return new Playlist[size];
+        }
+    };
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(playlistId);
+        dest.writeString(name);
+        dest.writeInt(userId);
+        dest.writeList(songIds);
     }
 }

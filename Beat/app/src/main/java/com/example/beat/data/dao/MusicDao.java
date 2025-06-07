@@ -75,6 +75,12 @@ public interface MusicDao {
     @Query("SELECT * FROM local_song WHERE artistId = :artistId AND userId = :userId")
     List<LocalSong> getSongsByArtistAndUser(int artistId, int userId);
 
+    @Query("SELECT * FROM local_song WHERE filePath = :filePath LIMIT 1")
+    LocalSong getSongByFilePath(String filePath);
+
+
+
+
     // Playlist operations
     @Insert
     long insertPlaylist(Playlist playlist);
@@ -97,9 +103,4 @@ public interface MusicDao {
     @Transaction
     @Query("SELECT * FROM user WHERE userId = :userId")
     UserWithPlaylists getUserWithPlaylists(int userId);
-
-    @Query("SELECT ls.* FROM local_song ls " +
-           "INNER JOIN playlist_song ps ON ls.songId = ps.songId " +
-           "WHERE ps.playlistId = :playlistId")
-    List<LocalSong> getPlaylistSongs(int playlistId);
 }
