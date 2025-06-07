@@ -1,0 +1,33 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.Beat" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorOnPrimary">@color/text_primary</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorOnSecondary">@color/text_primary</item>
+        <item name="colorError">@color/error</item>
+        <item name="android:colorControlNormal">@color/text_secondary</item>
+        <item name="android:colorControlActivated">@color/accent</item>
+        <item name="android:colorControlHighlight">@color/accent</item>
+        <item name="android:statusBarColor">@color/surface</item>
+        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="android:windowBackground">@color/background</item>
+    </style>
+
+    <style name="Theme.Beat" parent="Base.Theme.Beat" />
+
+    <!-- Shape Appearance Styles -->
+    <style name="ShapeAppearance.App.MediumComponent" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item> 
+    </style>
+
+    <!-- SearchView Style -->
+    <style name="SearchViewStyle" parent="Widget.Material3.SearchView">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColorHint">@color/search_hint</item>
+        <item name="queryHint">@string/search_hint</item>
+    </style>
+</resources>
