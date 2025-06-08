@@ -57,14 +57,14 @@ public class LoginActivity extends AppCompatActivity {
                                 .putInt("userId", user.userId)
                                 .putString("user_email", email)  // Store email
                                 .apply();
-                        
+
                         // Start MainActivity
                         startActivity(new Intent(LoginActivity.this, MainActivity.class));
                         finish();
                     });
                 } else {
-                    runOnUiThread(() -> 
-                        Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
+                    runOnUiThread(() ->
+                            Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
                     );
                 }
             }).start();

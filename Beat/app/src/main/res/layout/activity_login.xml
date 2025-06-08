@@ -4,12 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/background_music"
-    android:padding="24dp">
+    android:padding="16dp">
 
     <ImageView
         android:id="@+id/logo"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
         android:layout_marginTop="16dp"
         android:src="@drawable/ic_launcher"
         app:layout_constraintEnd_toEndOf="parent"
@@ -21,9 +21,9 @@
         android:id="@+id/app_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:text="BEAT"
-        android:textSize="48sp"
+        android:textSize="32sp"
         android:textStyle="bold"
         android:textColor="#FFFFFF"
         app:layout_constraintEnd_toEndOf="parent"
@@ -32,17 +32,17 @@
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/email_input_layout"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:hint="Username"
+        android:layout_marginTop="16dp"
+        android:hint="Email"
         android:textColorHint="#FFFFFF"
         android:background="@drawable/text_input_background"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/app_name"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        android:padding="16dp">
+        android:padding="4dp">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/email_edit_text"
@@ -55,17 +55,17 @@
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/password_input_layout"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:hint="Password"
         android:textColorHint="#FFFFFF"
+        android:padding="4dp"
         android:background="@drawable/text_input_background"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/email_input_layout"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        android:padding="16dp">
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/password_edit_text"
@@ -78,7 +78,7 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/login_button"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:text="LOGIN"
@@ -109,9 +109,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        android:text="Don't have an account? Sign Up"
+        android:text="Don't have an account?"
+        android:textColor="#FFD700"
         android:textSize="16sp"
-        android:textColor="#FFFFFF"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/forgot_password"
