@@ -169,4 +169,14 @@ public class PlaylistManager {
     public int getPlaylistSize() {
         return hasPlaylist() ? songList.size() : 0;
     }
+
+    public void setCurrentPosition(int position) {
+        if (hasPlaylist() && position >= 0 && position < songList.size()) {
+            this.currentPosition = position;
+            updateCurrentTrackInfo();
+            Log.d(TAG, "Current position set to: " + position);
+        } else {
+            Log.w(TAG, "Invalid position or no playlist: " + position);
+        }
+    }
 }

@@ -15,7 +15,7 @@ import com.example.beat.service.MusicService;
 import com.example.beat.service.MusicServiceConnection;
 import com.google.android.material.imageview.ShapeableImageView;
 
-public class PlayerActivityWithService extends AppCompatActivity implements MusicServiceConnection.ServiceConnectionListener {
+public class PlayerActivityWithService extends AppCompatActivity implements MusicServiceConnection.ServiceConnectionListener, com.example.beat.service.MusicService.TrackChangeListener {
 
     private MusicServiceConnection musicServiceConnection;
     private ShapeableImageView albumArtImageView;
@@ -276,6 +276,9 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
     public void onServiceConnected(MusicService service) {
         isServiceReady = true;
 
+        // Set up track change listener
+        service.setTrackChangeListener(this);
+
         // Setup playlist in PlaylistManager for next/previous functionality
         setupPlaylistManager();
 
@@ -293,6 +296,9 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
                 // Just update UI without restarting playback
                 updatePlayPauseButton();
                 startSeekBarUpdate();
+
+                // Ensure PlaylistManager is synced with current position
+                syncPlaylistManagerPosition();
             } else {
                 android.util.Log.d("PlayerActivity", "Starting new playback");
                 try {
@@ -404,14 +410,16 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
     }
 
     private void playPrevious() {
-        android.util.Log.d("PlayerActivity", "playPrevious called. songList size: " + (songList != null ? songList.size() : "null"));
-        if (songList != null && !songList.isEmpty()) {
-            currentPosition = (currentPosition - 1 + songList.size()) % songList.size();
-            android.util.Log.d("PlayerActivity", "Going to previous song at position: " + currentPosition);
-            loadCurrentSong();
-        } else {
-            android.util.Log.d("PlayerActivity", "No playlist - restarting current song");
-            // If no playlist, restart current song
+        android.util.Log.d("PlayerActivity", "playPrevious called - using service command");
+        try {
+            // Use service command to trigger previous track (same as mini player)
+            android.content.Intent intent = new android.content.Intent(this, com.example.beat.service.MusicService.class);
+            intent.setAction("PREVIOUS");
+            startService(intent);
+            android.util.Log.d("PlayerActivity", "Previous track service command sent");
+        } catch (Exception e) {
+            android.util.Log.e("PlayerActivity", "Error sending previous track command", e);
+            // Fallback: restart current song
             if (musicServiceConnection != null) {
                 musicServiceConnection.seekTo(0);
             }
@@ -419,21 +427,16 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
     }
 
     private void playNext() {
-        android.util.Log.d("PlayerActivity", "playNext called. songList size: " + (songList != null ? songList.size() : "null"));
-        if (songList != null && !songList.isEmpty()) {
-            if (isShuffleEnabled) {
-                // Random song selection
-                java.util.Random random = new java.util.Random();
-                currentPosition = random.nextInt(songList.size());
-                android.util.Log.d("PlayerActivity", "Shuffle mode - going to random song at position: " + currentPosition);
-            } else {
-                currentPosition = (currentPosition + 1) % songList.size();
-                android.util.Log.d("PlayerActivity", "Going to next song at position: " + currentPosition);
-            }
-            loadCurrentSong();
-        } else {
-            android.util.Log.d("PlayerActivity", "No playlist - restarting current song");
-            // If no playlist, restart current song
+        android.util.Log.d("PlayerActivity", "playNext called - using service command");
+        try {
+            // Use service command to trigger next track (same as mini player)
+            android.content.Intent intent = new android.content.Intent(this, com.example.beat.service.MusicService.class);
+            intent.setAction("NEXT");
+            startService(intent);
+            android.util.Log.d("PlayerActivity", "Next track service command sent");
+        } catch (Exception e) {
+            android.util.Log.e("PlayerActivity", "Error sending next track command", e);
+            // Fallback: restart current song
             if (musicServiceConnection != null) {
                 musicServiceConnection.seekTo(0);
             }
@@ -452,6 +455,34 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
 
             android.util.Log.d("PlayerActivity", "Playlist setup in PlaylistManager: " +
                 songList.size() + " songs, position: " + currentPosition);
+        }
+    }
+
+    // Sync PlaylistManager position when returning from mini player
+    private void syncPlaylistManagerPosition() {
+        if (songList != null && !songList.isEmpty() && streamUrl != null) {
+            // Find current song position in the playlist
+            int foundPosition = -1;
+            for (int i = 0; i < songList.size(); i++) {
+                if (streamUrl.equals(songList.get(i))) {
+                    foundPosition = i;
+                    break;
+                }
+            }
+
+            if (foundPosition != -1) {
+                currentPosition = foundPosition;
+                com.example.beat.service.PlaylistManager playlistManager =
+                    com.example.beat.service.PlaylistManager.getInstance();
+
+                // Update the position in PlaylistManager
+                playlistManager.setCurrentPosition(foundPosition);
+
+                android.util.Log.d("PlayerActivity", "Synced PlaylistManager position to: " + foundPosition +
+                    " for song: " + trackTitle);
+            } else {
+                android.util.Log.w("PlayerActivity", "Could not find current song in playlist: " + streamUrl);
+            }
         }
     }
 
@@ -735,6 +766,32 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
         stopSeekBarUpdate();
     }
 
+    private void updateTrackInfo() {
+        // Update UI with track info
+        if (trackTitleTextView != null) {
+            trackTitleTextView.setText(trackTitle != null ? trackTitle : "Unknown Track");
+        }
+        if (artistNameTextView != null) {
+            artistNameTextView.setText(artistName != null ? artistName : "Unknown Artist");
+        }
+
+        // Load album art
+        if (albumArtUrl != null && !albumArtUrl.isEmpty()) {
+            try {
+                com.bumptech.glide.Glide.with(this)
+                    .load(albumArtUrl)
+                    .placeholder(R.drawable.default_album_art)
+                    .error(R.drawable.default_album_art)
+                    .into(albumArtImageView);
+            } catch (Exception e) {
+                android.util.Log.e("PlayerActivity", "Error loading album art", e);
+                albumArtImageView.setImageResource(R.drawable.default_album_art);
+            }
+        } else {
+            albumArtImageView.setImageResource(R.drawable.default_album_art);
+        }
+    }
+
     private void updateMiniPlayer() {
         try {
             if (trackTitle != null && artistName != null) {
@@ -772,5 +829,24 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
 
         // Don't unbind service on destroy to keep music playing
         // Only unbind when user explicitly stops music
+    }
+
+    // TrackChangeListener implementation
+    @Override
+    public void onTrackChanged(String streamUrl, String title, String artist, String albumArt) {
+        android.util.Log.d("PlayerActivity", "Track changed notification received: " + title);
+
+        // Update current track info
+        this.streamUrl = streamUrl;
+        this.trackTitle = title;
+        this.artistName = artist;
+        this.albumArtUrl = albumArt;
+
+        // Update UI on main thread
+        runOnUiThread(() -> {
+            updateTrackInfo();
+            updateMiniPlayer();
+            android.util.Log.d("PlayerActivity", "UI updated for track change: " + title);
+        });
     }
 }

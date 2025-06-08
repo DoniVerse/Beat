@@ -34,8 +34,16 @@ public class MusicService extends Service implements PlaylistManager.PlaylistLis
     private String currentTrackTitle = "";
     private String currentArtist = "";
     private String currentAlbumArt = "";
+    private String currentStreamUrl = "";
 
     private PlaylistManager playlistManager;
+
+    // Track change listener interface
+    public interface TrackChangeListener {
+        void onTrackChanged(String streamUrl, String title, String artist, String albumArt);
+    }
+
+    private TrackChangeListener trackChangeListener;
 
     private final IBinder binder = new MusicBinder();
 
@@ -94,6 +102,7 @@ public class MusicService extends Service implements PlaylistManager.PlaylistLis
         currentTrackTitle = title != null ? title : "Unknown Track";
         currentArtist = artist != null ? artist : "Unknown Artist";
         currentAlbumArt = albumArt != null ? albumArt : "";
+        currentStreamUrl = streamUrl != null ? streamUrl : "";
 
         try {
             if (mediaPlayer != null) {
@@ -211,6 +220,21 @@ public class MusicService extends Service implements PlaylistManager.PlaylistLis
         return currentArtist;
     }
 
+    public String getCurrentStreamUrl() {
+        return currentStreamUrl;
+    }
+
+    // Track change listener methods
+    public void setTrackChangeListener(TrackChangeListener listener) {
+        this.trackChangeListener = listener;
+        Log.d(TAG, "Track change listener set");
+    }
+
+    public void removeTrackChangeListener() {
+        this.trackChangeListener = null;
+        Log.d(TAG, "Track change listener removed");
+    }
+
     public void playNext() {
         Log.d(TAG, "Next song requested");
         if (playlistManager != null) {
@@ -237,6 +261,11 @@ public class MusicService extends Service implements PlaylistManager.PlaylistLis
                 .updateTrackInfo(streamUrl, title, artist, albumArt);
         } catch (Exception e) {
             Log.e(TAG, "Error updating mini player", e);
+        }
+
+        // Notify track change listener (PlayerActivityWithService)
+        if (trackChangeListener != null) {
+            trackChangeListener.onTrackChanged(streamUrl, title, artist, albumArt);
         }
     }
 
