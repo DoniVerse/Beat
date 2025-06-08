@@ -322,43 +322,10 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
             android.widget.Toast.makeText(this, "Error: No song URL provided", android.widget.Toast.LENGTH_SHORT).show();
         }
 
-        // Set up completion listener for repeat/next functionality
-        setupCompletionListener();
+        // Note: Song completion is now handled by MusicService
     }
 
-    private void setupCompletionListener() {
-        // Set up a periodic check to handle song completion and repeat functionality
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                if (musicServiceConnection != null && isServiceReady) {
-                    int currentPosition = musicServiceConnection.getCurrentPosition();
-                    int duration = musicServiceConnection.getDuration();
 
-                    // Check if song is near completion (within 1 second)
-                    if (duration > 0 && currentPosition > 0 && (duration - currentPosition) < 1000) {
-                        handleSongCompletion();
-                    }
-                }
-
-                // Schedule next check in 1 second
-                handler.postDelayed(this, 1000);
-            }
-        });
-    }
-
-    private void handleSongCompletion() {
-        if (isRepeatEnabled) {
-            // Repeat current song
-            if (musicServiceConnection != null) {
-                musicServiceConnection.seekTo(0);
-                musicServiceConnection.resumeMusic();
-            }
-        } else {
-            // Go to next song
-            playNext();
-        }
-    }
 
     @Override
     public void onServiceDisconnected() {
@@ -404,6 +371,13 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
     private void toggleShuffle() {
         isShuffleEnabled = !isShuffleEnabled;
         updateShuffleButton();
+
+        // Update PlaylistManager immediately
+        com.example.beat.service.PlaylistManager playlistManager =
+            com.example.beat.service.PlaylistManager.getInstance();
+        playlistManager.setShuffleEnabled(isShuffleEnabled);
+
+        android.util.Log.d("PlayerActivity", "Shuffle toggled: " + isShuffleEnabled);
         android.widget.Toast.makeText(this,
             isShuffleEnabled ? "Shuffle ON" : "Shuffle OFF",
             android.widget.Toast.LENGTH_SHORT).show();
@@ -552,6 +526,13 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
     private void toggleRepeat() {
         isRepeatEnabled = !isRepeatEnabled;
         updateRepeatButton();
+
+        // Update PlaylistManager immediately
+        com.example.beat.service.PlaylistManager playlistManager =
+            com.example.beat.service.PlaylistManager.getInstance();
+        playlistManager.setRepeatEnabled(isRepeatEnabled);
+
+        android.util.Log.d("PlayerActivity", "Repeat toggled: " + isRepeatEnabled);
         android.widget.Toast.makeText(this,
             isRepeatEnabled ? "Repeat ON" : "Repeat OFF",
             android.widget.Toast.LENGTH_SHORT).show();
