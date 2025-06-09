@@ -9,7 +9,7 @@ import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
-import com.example.beat.PlaylistSongCrossRef;
+
 import com.example.beat.data.dao.MusicDao;
 import com.example.beat.data.entities.*;
 import org.junit.After;
@@ -179,10 +179,10 @@ public class AppDatabaseTest {
         long songId = musicDao.insertSong(song);
 
         // Add song to playlist
-        PlaylistSongCrossRef crossRef = new PlaylistSongCrossRef();
-        crossRef.playlistId = (int) playlistId;
-        crossRef.songId = (int) songId;
-        musicDao.insertPlaylistSongCrossRef(crossRef);
+        PlaylistSong playlistSong = new PlaylistSong();
+        playlistSong.setPlaylistId((int) playlistId);
+        playlistSong.setSongId((int) songId);
+        musicDao.insertPlaylistSong(playlistSong);
 
         // Test PlaylistWithSongs relationship
         PlaylistWithSongs playlistWithSongs = musicDao.getPlaylistWithSongs((int) playlistId);

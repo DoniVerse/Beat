@@ -37,9 +37,6 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.PlayerActivity"
-            android:exported="false" />
-        <activity
             android:name=".ui.PlayerActivityWithService"
             android:exported="false"
             android:launchMode="singleTop"
