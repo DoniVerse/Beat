@@ -45,4 +45,7 @@ public interface PlaylistDao {
 
     @Query("SELECT COUNT(*) > 0 FROM playlist_song WHERE playlistId = :playlistId AND songId = :songId")
     boolean isSongInPlaylist(int playlistId, int songId);
+
+    @Query("DELETE FROM playlist_song WHERE playlistId = :playlistId")
+    void deletePlaylistSongs(int playlistId);
 }

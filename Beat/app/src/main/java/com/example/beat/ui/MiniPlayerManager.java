@@ -153,6 +153,11 @@ public class MiniPlayerManager implements MusicServiceConnection.ServiceConnecti
             intent.setAction("PREVIOUS");
             context.startService(intent);
             android.util.Log.d("MiniPlayerManager", "Previous track service command sent");
+
+            // Update button state after a short delay to ensure service has processed the command
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                updatePlayPauseButton();
+            }, 500);
         } catch (Exception e) {
             android.util.Log.e("MiniPlayerManager", "Error sending previous track command", e);
             // Fallback: restart current song
@@ -169,6 +174,11 @@ public class MiniPlayerManager implements MusicServiceConnection.ServiceConnecti
             intent.setAction("NEXT");
             context.startService(intent);
             android.util.Log.d("MiniPlayerManager", "Next track service command sent");
+
+            // Update button state after a short delay to ensure service has processed the command
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                updatePlayPauseButton();
+            }, 500);
         } catch (Exception e) {
             android.util.Log.e("MiniPlayerManager", "Error sending next track command", e);
             // Fallback: restart current song

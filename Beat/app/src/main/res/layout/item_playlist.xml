@@ -8,25 +8,44 @@
     app:cardElevation="4dp"
     android:background="#80121212">
 
-    <LinearLayout
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
-            android:id="@+id/playlist_name"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="18sp"
-            android:textStyle="bold"/>
+            android:layout_toLeftOf="@+id/playlist_option_menu"
+            android:layout_centerVertical="true"
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/song_count"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginTop="8dp"/>
+            <TextView
+                android:id="@+id/playlist_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/song_count"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:layout_marginTop="8dp"/>
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/playlist_option_menu"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:src="@drawable/ic_more_vert"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="4dp"
+            android:contentDescription="Options" />
+
+    </RelativeLayout>
 </androidx.cardview.widget.CardView>
