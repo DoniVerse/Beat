@@ -15,4 +15,9 @@
     <color name="background_dark">#121212</color>
 
     <color name="accent_dark">#FFA500</color>
+
+    <!-- Missing gradient colors -->
+    <color name="accent_gradient_start">#FFD700</color>
+    <color name="accent_gradient_end">#FFA500</color>
+    <color name="progress_background">#333333</color>
 </resources>

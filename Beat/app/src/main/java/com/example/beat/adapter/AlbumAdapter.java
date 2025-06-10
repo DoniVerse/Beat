@@ -1,9 +1,13 @@
 package com.example.beat.adapter;
 
+import android.app.AlertDialog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -21,6 +25,12 @@ import java.util.List;
 
 public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHolder> {
     private List<AlbumWithSongs> albums;
+    private OnAlbumActionListener actionListener;
+
+    public interface OnAlbumActionListener {
+        void onDeleteAlbum(AlbumWithSongs album, int position);
+        void onAddAlbumToPlaylist(AlbumWithSongs album);
+    }
 
     public AlbumAdapter(List<AlbumWithSongs> albums) {
         this.albums = albums;
@@ -29,6 +39,10 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
     public void updateAlbums(List<AlbumWithSongs> albums) {
         this.albums = albums;
         notifyDataSetChanged();
+    }
+
+    public void setOnAlbumActionListener(OnAlbumActionListener actionListener) {
+        this.actionListener = actionListener;
     }
 
     @NonNull
@@ -57,12 +71,14 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
         private final TextView albumName;
         private final TextView songCount;
         private final ShapeableImageView albumArt;
+        private final ImageButton btnOptions;
 
         public AlbumViewHolder(@NonNull View itemView) {
             super(itemView);
             albumName = itemView.findViewById(R.id.album_name);
             songCount = itemView.findViewById(R.id.song_count);
             albumArt = itemView.findViewById(R.id.album_art);
+            btnOptions = itemView.findViewById(R.id.btn_options);
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
@@ -72,6 +88,49 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
                     ((MainActivity) itemView.getContext()).navigateToFragment(fragment);
                 }
             });
+
+            // Set up option menu click listener
+            btnOptions.setOnClickListener(v -> {
+                int position = getAdapterPosition();
+                if (position != RecyclerView.NO_POSITION && actionListener != null) {
+                    showOptionsMenu(v, albums.get(position), position);
+                }
+            });
+        }
+
+        private void showOptionsMenu(View view, AlbumWithSongs album, int position) {
+            PopupMenu popup = new PopupMenu(view.getContext(), view);
+            popup.getMenuInflater().inflate(R.menu.album_options_menu, popup.getMenu());
+
+            popup.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == R.id.action_delete_album) {
+                    if (actionListener != null) {
+                        showDeleteConfirmation(album, position);
+                    }
+                    return true;
+                } else if (item.getItemId() == R.id.action_add_album_to_playlist) {
+                    if (actionListener != null) {
+                        actionListener.onAddAlbumToPlaylist(album);
+                    }
+                    return true;
+                }
+                return false;
+            });
+
+            popup.show();
+        }
+
+        private void showDeleteConfirmation(AlbumWithSongs album, int position) {
+            new AlertDialog.Builder(itemView.getContext())
+                .setTitle("Delete Album")
+                .setMessage("Are you sure you want to delete album \"" + album.album.name + "\" and all its songs?")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    if (actionListener != null) {
+                        actionListener.onDeleteAlbum(album, position);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
         }
 
         public void bind(AlbumWithSongs album) {

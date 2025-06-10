@@ -1,9 +1,13 @@
 package com.example.beat.adapter;
 
+import android.app.AlertDialog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.beat.R;
@@ -21,14 +25,24 @@ import java.util.List;
 public class ArtistAdapter extends RecyclerView.Adapter<ArtistAdapter.ArtistViewHolder> {
     private final List<Artist> artists;
     private final OnArtistClickListener listener;
+    private OnArtistActionListener actionListener;
 
     public interface OnArtistClickListener {
         void onArtistClick(Artist artist);
     }
 
+    public interface OnArtistActionListener {
+        void onDeleteArtist(Artist artist, int position);
+        void onAddArtistToPlaylist(Artist artist);
+    }
+
     public ArtistAdapter(List<Artist> artists, OnArtistClickListener listener) {
         this.artists = artists;
         this.listener = listener;
+    }
+
+    public void setOnArtistActionListener(OnArtistActionListener actionListener) {
+        this.actionListener = actionListener;
     }
 
     @NonNull
@@ -54,18 +68,63 @@ public class ArtistAdapter extends RecyclerView.Adapter<ArtistAdapter.ArtistView
         private final TextView artistName;
         private final TextView songCount;
         private final ShapeableImageView artistArt;
+        private final ImageButton btnOptions;
 
         public ArtistViewHolder(@NonNull View itemView) {
             super(itemView);
             artistName = itemView.findViewById(R.id.artist_name);
             songCount = itemView.findViewById(R.id.song_count);
             artistArt = itemView.findViewById(R.id.artist_art);
+            btnOptions = itemView.findViewById(R.id.btn_options);
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
                     listener.onArtistClick(artists.get(position));
                 }
             });
+
+            // Set up option menu click listener
+            btnOptions.setOnClickListener(v -> {
+                int position = getAdapterPosition();
+                if (position != RecyclerView.NO_POSITION && actionListener != null) {
+                    showOptionsMenu(v, artists.get(position), position);
+                }
+            });
+        }
+
+        private void showOptionsMenu(View view, Artist artist, int position) {
+            PopupMenu popup = new PopupMenu(view.getContext(), view);
+            popup.getMenuInflater().inflate(R.menu.artist_options_menu, popup.getMenu());
+
+            popup.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == R.id.action_delete_artist) {
+                    if (actionListener != null) {
+                        showDeleteConfirmation(artist, position);
+                    }
+                    return true;
+                } else if (item.getItemId() == R.id.action_add_artist_to_playlist) {
+                    if (actionListener != null) {
+                        actionListener.onAddArtistToPlaylist(artist);
+                    }
+                    return true;
+                }
+                return false;
+            });
+
+            popup.show();
+        }
+
+        private void showDeleteConfirmation(Artist artist, int position) {
+            new AlertDialog.Builder(itemView.getContext())
+                .setTitle("Delete Artist")
+                .setMessage("Are you sure you want to delete artist \"" + artist.name + "\" and all their songs?")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    if (actionListener != null) {
+                        actionListener.onDeleteArtist(artist, position);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
         }
 
         public void bind(Artist artist) {

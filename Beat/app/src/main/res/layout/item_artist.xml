@@ -53,6 +53,18 @@
 
         </LinearLayout>
 
+        <ImageButton
+            android:id="@+id/btn_options"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_more_vert"
+            android:contentDescription="Options"
+            android:padding="12dp"
+            android:clickable="true"
+            android:focusable="true" />
+
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>

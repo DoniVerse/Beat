@@ -103,4 +103,26 @@ public interface MusicDao {
     @Transaction
     @Query("SELECT * FROM user WHERE userId = :userId")
     UserWithPlaylists getUserWithPlaylists(int userId);
+
+    // Delete operations
+    @Delete
+    void deleteSong(LocalSong song);
+
+    @Query("DELETE FROM local_song WHERE songId = :songId")
+    void deleteSongById(int songId);
+
+    @Query("DELETE FROM local_song WHERE songId = :songId AND userId = :userId")
+    void deleteSongByIdAndUser(int songId, int userId);
+
+    @Query("DELETE FROM local_song WHERE albumId = :albumId AND userId = :userId")
+    void deleteAlbumSongs(int albumId, int userId);
+
+    @Query("DELETE FROM local_song WHERE artistId = :artistId AND userId = :userId")
+    void deleteArtistSongs(int artistId, int userId);
+
+    @Delete
+    void deleteArtist(Artist artist);
+
+    @Delete
+    void deleteAlbum(Album album);
 }
