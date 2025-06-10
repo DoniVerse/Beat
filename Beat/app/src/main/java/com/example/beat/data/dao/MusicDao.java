@@ -31,12 +31,11 @@ public interface MusicDao {
     @Query("SELECT * FROM artist WHERE artistId = :artistId")
     Artist getArtistById(int artistId);
 
-    @Transaction
     @Query("SELECT DISTINCT artist.* FROM artist " +
             "JOIN local_song ON artist.artistId = local_song.artistId " +
             "WHERE local_song.userId = :userId " +
             "ORDER BY artist.name ASC")
-    List<ArtistWithSongs> getArtistsByUser(int userId);
+    List<Artist> getArtistsForUser(int userId);
 
     @Query("SELECT * FROM artist WHERE name = :name")
     Artist getArtistByName(String name);
@@ -64,7 +63,7 @@ public interface MusicDao {
     @Query("SELECT * FROM album WHERE albumId IN " +
             "(SELECT DISTINCT albumId FROM local_song WHERE userId = :userId) " +
             "ORDER BY name ASC")
-    List<AlbumWithSongs> getAlbumsByUser(int userId);
+    List<Album> getAlbumsForUser(int userId);
 
     @Query("SELECT * FROM local_song " +
             "JOIN album ON local_song.albumId = album.albumId " +

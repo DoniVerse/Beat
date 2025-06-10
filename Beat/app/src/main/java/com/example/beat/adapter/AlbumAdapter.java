@@ -360,15 +360,7 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
                         addedCount++;
                     }
 
-                    // Show success message
-                    final int finalAddedCount = addedCount;
-                    ((android.app.Activity) view.getContext()).runOnUiThread(() -> {
-                        new AlertDialog.Builder(view.getContext())
-                            .setTitle("Success")
-                            .setMessage("Created playlist \"" + playlistName + "\" and added " + finalAddedCount + " songs from album \"" + album.album.name + "\"")
-                            .setPositiveButton("OK", null)
-                            .show();
-                    });
+                    // Success - no dialog needed
                 } catch (Exception e) {
                     ((android.app.Activity) view.getContext()).runOnUiThread(() -> {
                         new AlertDialog.Builder(view.getContext())
@@ -412,25 +404,7 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
                         }
                     }
 
-                    // Show success message
-                    final int finalAddedCount = addedCount;
-                    final int finalSkippedCount = skippedCount;
-                    ((android.app.Activity) view.getContext()).runOnUiThread(() -> {
-                        String message;
-                        if (finalSkippedCount == 0) {
-                            message = "Added all " + finalAddedCount + " songs from album \"" + album.album.name + "\" to playlist \"" + playlist.getName() + "\"";
-                        } else if (finalAddedCount == 0) {
-                            message = "All " + finalSkippedCount + " songs from album \"" + album.album.name + "\" are already in playlist \"" + playlist.getName() + "\"";
-                        } else {
-                            message = "Added " + finalAddedCount + " new songs from album \"" + album.album.name + "\" to playlist \"" + playlist.getName() + "\". " + finalSkippedCount + " songs were already in the playlist.";
-                        }
-
-                        new AlertDialog.Builder(view.getContext())
-                            .setTitle("Success")
-                            .setMessage(message)
-                            .setPositiveButton("OK", null)
-                            .show();
-                    });
+                    // Success - no dialog needed
                 } catch (Exception e) {
                     ((android.app.Activity) view.getContext()).runOnUiThread(() -> {
                         new AlertDialog.Builder(view.getContext())

@@ -94,9 +94,16 @@ public class ArtistFragment extends Fragment {
 
     private void loadArtists() {
         final List<ArtistWithSongs> artists = new ArrayList<>();
-        List<ArtistWithSongs> dbArtists = database.musicDao().getArtistsByUser(userId);
+
+        // Get artists for user and manually build ArtistWithSongs objects
+        List<Artist> dbArtists = database.musicDao().getArtistsForUser(userId);
         if (dbArtists != null) {
-            artists.addAll(dbArtists);
+            for (Artist artist : dbArtists) {
+                ArtistWithSongs artistWithSongs = new ArtistWithSongs();
+                artistWithSongs.artist = artist;
+                artistWithSongs.songs = database.musicDao().getSongsByArtistAndUser(artist.artistId, userId);
+                artists.add(artistWithSongs);
+            }
         }
         allArtists = new ArrayList<>(artists);
         artistAdapter.updateArtists(artists);

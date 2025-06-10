@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.beat.R;
 import com.example.beat.adapter.AlbumAdapter;
 import com.example.beat.data.database.AppDatabase;
+import com.example.beat.data.entities.Album;
 import com.example.beat.data.entities.AlbumWithSongs;
 import com.example.beat.data.entities.LocalSong;
 
@@ -95,9 +96,16 @@ public class AlbumFragment extends Fragment {
             try {
                 database = AppDatabase.getInstance(getContext());
                 final List<AlbumWithSongs> albums = new ArrayList<>();
-                List<AlbumWithSongs> dbAlbums = database.musicDao().getAlbumsByUser(userId);
+
+                // Get albums for user and manually build AlbumWithSongs objects
+                List<Album> dbAlbums = database.musicDao().getAlbumsForUser(userId);
                 if (dbAlbums != null) {
-                    albums.addAll(dbAlbums);
+                    for (Album album : dbAlbums) {
+                        AlbumWithSongs albumWithSongs = new AlbumWithSongs();
+                        albumWithSongs.album = album;
+                        albumWithSongs.songs = database.musicDao().getSongsByAlbumAndUser(album.albumId, userId);
+                        albums.add(albumWithSongs);
+                    }
                 }
                 allAlbums = new ArrayList<>(albums);  // Store all albums
                 requireActivity().runOnUiThread(() -> {
