@@ -42,4 +42,7 @@ public interface PlaylistDao {
     @Transaction
     @Query("SELECT * FROM playlist WHERE userId = :userId")
     List<PlaylistWithSongs> getUserPlaylistsWithSongs(int userId);
+
+    @Query("SELECT COUNT(*) > 0 FROM playlist_song WHERE playlistId = :playlistId AND songId = :songId")
+    boolean isSongInPlaylist(int playlistId, int songId);
 }

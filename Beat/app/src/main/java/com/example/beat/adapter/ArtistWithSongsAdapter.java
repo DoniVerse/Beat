@@ -278,8 +278,7 @@ public class ArtistWithSongsAdapter extends RecyclerView.Adapter<ArtistWithSongs
             playlistNames[playlists.size()] = "Create New Playlist...";
 
             new AlertDialog.Builder(view.getContext())
-                .setTitle("Add Artist to Playlist")
-                .setMessage("Add all " + artist.songs.size() + " songs from \"" + artist.artist.name + "\" to:")
+                .setTitle("Add to Playlist")
                 .setItems(playlistNames, (dialog, which) -> {
                     if (which == playlists.size()) {
                         // Create new playlist option selected
@@ -292,7 +291,6 @@ public class ArtistWithSongsAdapter extends RecyclerView.Adapter<ArtistWithSongs
                             .setPositiveButton("Create", (d, w) -> {
                                 String playlistName = editText.getText().toString().trim();
                                 if (!playlistName.isEmpty()) {
-                                    // Get user ID from SharedPreferences
                                     android.content.SharedPreferences prefs = view.getContext()
                                         .getSharedPreferences("UserPrefs", android.content.Context.MODE_PRIVATE);
                                     int userId = prefs.getInt("userId", -1);
@@ -315,6 +313,8 @@ public class ArtistWithSongsAdapter extends RecyclerView.Adapter<ArtistWithSongs
                 })
                 .show();
         }
+
+
 
         private void createPlaylistAndAddArtistSongs(ArtistWithSongs artist, String playlistName, View view,
                 com.example.beat.data.database.AppDatabase db, int userId) {

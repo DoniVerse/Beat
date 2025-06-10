@@ -170,7 +170,7 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
             Intent intent = new Intent(requireActivity(), PlayerActivityWithService.class);
             intent.putExtra("title", track.getTitle());
             intent.putExtra("artist", track.getArtist() != null ? track.getArtist().getName() : "Unknown Artist");
-            intent.putExtra("albumArtUrl", track.getAlbum() != null ? track.getAlbum().getCover() : "");
+            intent.putExtra("albumArtUrl", track.getAlbum() != null ? track.getAlbum().getCoverMedium() : "");
             intent.putExtra("streamUrl", track.getPreview());
             startActivity(intent);
         } else {

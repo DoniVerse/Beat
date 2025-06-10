@@ -300,8 +300,7 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
             playlistNames[playlists.size()] = "Create New Playlist...";
 
             new AlertDialog.Builder(view.getContext())
-                .setTitle("Add Album to Playlist")
-                .setMessage("Add all " + album.songs.size() + " songs from \"" + album.album.name + "\" to:")
+                .setTitle("Add to Playlist")
                 .setItems(playlistNames, (dialog, which) -> {
                     if (which == playlists.size()) {
                         // Create new playlist option selected
@@ -336,6 +335,8 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
                 })
                 .show();
         }
+
+
 
         private void createPlaylistAndAddAlbumSongs(AlbumWithSongs album, String playlistName, View view,
                 com.example.beat.data.database.AppDatabase db, int userId) {

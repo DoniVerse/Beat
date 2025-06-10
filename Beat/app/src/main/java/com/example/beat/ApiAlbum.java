@@ -35,4 +35,9 @@ public class ApiAlbum {
 
     @JsonProperty("type")
     private String type;
+
+    // Manual getter for coverMedium since Lombok might not be working properly
+    public String getCoverMedium() {
+        return coverMedium;
+    }
 }
