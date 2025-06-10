@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -102,21 +101,10 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.Playli
                 .setTitle("Playlist Options")
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
-                        // Delete playlist
-                        showDeleteConfirmationDialog(playlist, position, view);
+                        // Delete playlist directly without confirmation
+                        deletePlaylist(playlist, position, view);
                     }
                 })
-                .show();
-        }
-
-        private void showDeleteConfirmationDialog(PlaylistWithSongs playlist, int position, View view) {
-            new AlertDialog.Builder(view.getContext())
-                .setTitle("Delete Playlist")
-                .setMessage("Are you sure you want to delete \"" + playlist.playlist.name + "\"? This action cannot be undone.")
-                .setPositiveButton("Delete", (dialog, which) -> {
-                    deletePlaylist(playlist, position, view);
-                })
-                .setNegativeButton("Cancel", null)
                 .show();
         }
 
@@ -137,13 +125,10 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.Playli
                         adapter.playlists.remove(position);
                         adapter.notifyItemRemoved(position);
                         adapter.notifyItemRangeChanged(position, adapter.playlists.size());
-
-                        Toast.makeText(view.getContext(), "Playlist deleted successfully", Toast.LENGTH_SHORT).show();
                     });
                 } catch (Exception e) {
-                    ((android.app.Activity) view.getContext()).runOnUiThread(() -> {
-                        Toast.makeText(view.getContext(), "Error deleting playlist: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
+                    // Silent error handling - just log the error
+                    android.util.Log.e("PlaylistAdapter", "Error deleting playlist: " + e.getMessage());
                 }
             }).start();
         }

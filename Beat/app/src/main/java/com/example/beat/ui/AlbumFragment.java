@@ -100,12 +100,35 @@ public class AlbumFragment extends Fragment {
                 // Get albums for user and manually build AlbumWithSongs objects
                 List<Album> dbAlbums = database.musicDao().getAlbumsForUser(userId);
                 if (dbAlbums != null) {
+                    // Group albums by name to handle duplicates
+                    java.util.Map<String, AlbumWithSongs> albumMap = new java.util.HashMap<>();
+
                     for (Album album : dbAlbums) {
-                        AlbumWithSongs albumWithSongs = new AlbumWithSongs();
-                        albumWithSongs.album = album;
-                        albumWithSongs.songs = database.musicDao().getSongsByAlbumAndUser(album.albumId, userId);
-                        albums.add(albumWithSongs);
+                        List<LocalSong> albumSongs = database.musicDao().getSongsByAlbumAndUser(album.albumId, userId);
+
+                        if (albumMap.containsKey(album.name)) {
+                            // Album name already exists, merge songs
+                            AlbumWithSongs existingAlbum = albumMap.get(album.name);
+                            if (existingAlbum.songs == null) {
+                                existingAlbum.songs = new ArrayList<>();
+                            }
+                            if (albumSongs != null) {
+                                existingAlbum.songs.addAll(albumSongs);
+                            }
+                        } else {
+                            // New album name, create new entry
+                            AlbumWithSongs albumWithSongs = new AlbumWithSongs();
+                            albumWithSongs.album = album;
+                            albumWithSongs.songs = albumSongs != null ? albumSongs : new ArrayList<>();
+                            albumMap.put(album.name, albumWithSongs);
+                        }
                     }
+
+                    // Convert map to list
+                    albums.addAll(albumMap.values());
+
+                    // Sort albums by name
+                    albums.sort((a, b) -> a.album.name.compareToIgnoreCase(b.album.name));
                 }
                 allAlbums = new ArrayList<>(albums);  // Store all albums
                 requireActivity().runOnUiThread(() -> {

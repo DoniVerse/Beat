@@ -121,28 +121,15 @@ public class ArtistAdapter extends RecyclerView.Adapter<ArtistAdapter.ArtistView
         }
 
         private void showDeleteConfirmation(Artist artist, int position) {
-            new AlertDialog.Builder(itemView.getContext())
-                .setTitle("Delete Artist")
-                .setMessage("Are you sure you want to delete artist \"" + artist.name + "\" and all their songs?")
-                .setPositiveButton("Delete", (dialog, which) -> {
-                    if (actionListener != null) {
-                        actionListener.onDeleteArtist(artist, position);
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+            // Delete directly without confirmation
+            if (actionListener != null) {
+                actionListener.onDeleteArtist(artist, position);
+            }
         }
 
         private void showActualDeleteConfirmation(Artist artist, int position, View view) {
-            new AlertDialog.Builder(view.getContext())
-                .setTitle("Delete Artist")
-                .setMessage("Are you sure you want to delete artist \"" + artist.name + "\" and all their songs? This action cannot be undone.")
-                .setPositiveButton("Delete", (dialog, which) -> {
-                    // Actually delete the artist and all their songs from database
-                    deleteArtistFromDatabase(artist, position, view);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+            // Delete directly without confirmation
+            deleteArtistFromDatabase(artist, position, view);
         }
 
         private void deleteArtistFromDatabase(Artist artist, int position, View view) {
@@ -180,23 +167,10 @@ public class ArtistAdapter extends RecyclerView.Adapter<ArtistAdapter.ArtistView
                         artists.remove(position);
                         notifyItemRemoved(position);
                         notifyItemRangeChanged(position, artists.size());
-
-                        // Show success message
-                        new AlertDialog.Builder(view.getContext())
-                            .setTitle("Success")
-                            .setMessage("Artist \"" + artist.name + "\" and all their songs have been deleted successfully.")
-                            .setPositiveButton("OK", null)
-                            .show();
                     });
                 } catch (Exception e) {
-                    // Show error message on main thread
-                    ((android.app.Activity) view.getContext()).runOnUiThread(() -> {
-                        new AlertDialog.Builder(view.getContext())
-                            .setTitle("Error")
-                            .setMessage("Failed to delete artist: " + e.getMessage())
-                            .setPositiveButton("OK", null)
-                            .show();
-                    });
+                    // Silent error handling - just log the error
+                    android.util.Log.e("ArtistAdapter", "Error deleting artist: " + e.getMessage());
                 }
             }).start();
         }

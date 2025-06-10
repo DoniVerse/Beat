@@ -127,28 +127,15 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
         }
 
         private void showDeleteConfirmation(AlbumWithSongs album, int position) {
-            new AlertDialog.Builder(itemView.getContext())
-                .setTitle("Delete Album")
-                .setMessage("Are you sure you want to delete album \"" + album.album.name + "\" and all its songs?")
-                .setPositiveButton("Delete", (dialog, which) -> {
-                    if (actionListener != null) {
-                        actionListener.onDeleteAlbum(album, position);
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+            // Delete directly without confirmation
+            if (actionListener != null) {
+                actionListener.onDeleteAlbum(album, position);
+            }
         }
 
         private void showActualDeleteConfirmation(AlbumWithSongs album, int position, View view) {
-            new AlertDialog.Builder(view.getContext())
-                .setTitle("Delete Album")
-                .setMessage("Are you sure you want to delete album \"" + album.album.name + "\" and all its " + album.songs.size() + " songs? This action cannot be undone.")
-                .setPositiveButton("Delete", (dialog, which) -> {
-                    // Actually delete the album and all its songs from database
-                    deleteAlbumFromDatabase(album, position, view);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+            // Delete directly without confirmation
+            deleteAlbumFromDatabase(album, position, view);
         }
 
         private void deleteAlbumFromDatabase(AlbumWithSongs album, int position, View view) {
@@ -186,23 +173,10 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
                         albums.remove(position);
                         notifyItemRemoved(position);
                         notifyItemRangeChanged(position, albums.size());
-
-                        // Show success message
-                        new AlertDialog.Builder(view.getContext())
-                            .setTitle("Success")
-                            .setMessage("Album \"" + album.album.name + "\" and all its songs have been deleted successfully.")
-                            .setPositiveButton("OK", null)
-                            .show();
                     });
                 } catch (Exception e) {
-                    // Show error message on main thread
-                    ((android.app.Activity) view.getContext()).runOnUiThread(() -> {
-                        new AlertDialog.Builder(view.getContext())
-                            .setTitle("Error")
-                            .setMessage("Failed to delete album: " + e.getMessage())
-                            .setPositiveButton("OK", null)
-                            .show();
-                    });
+                    // Silent error handling - just log the error
+                    android.util.Log.e("AlbumAdapter", "Error deleting album: " + e.getMessage());
                 }
             }).start();
         }

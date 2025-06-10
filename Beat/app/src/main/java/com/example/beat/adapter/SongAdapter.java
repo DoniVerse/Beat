@@ -163,28 +163,15 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
         }
 
         private void showDeleteConfirmation(LocalSong song, int position) {
-            new AlertDialog.Builder(itemView.getContext())
-                .setTitle("Delete Song")
-                .setMessage("Are you sure you want to delete \"" + song.getTitle() + "\"?")
-                .setPositiveButton("Delete", (dialog, which) -> {
-                    if (actionListener != null) {
-                        actionListener.onDeleteSong(song, position);
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+            // Delete directly without confirmation
+            if (actionListener != null) {
+                actionListener.onDeleteSong(song, position);
+            }
         }
 
         private void showActualDeleteConfirmation(LocalSong song, int position, View view) {
-            new AlertDialog.Builder(view.getContext())
-                .setTitle("Delete Song")
-                .setMessage("Are you sure you want to delete \"" + song.getTitle() + "\"? This action cannot be undone.")
-                .setPositiveButton("Delete", (dialog, which) -> {
-                    // Actually delete the song from database
-                    deleteSongFromDatabase(song, position, view);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+            // Delete directly without confirmation
+            deleteSongFromDatabase(song, position, view);
         }
 
         private void deleteSongFromDatabase(LocalSong song, int position, View view) {
@@ -203,23 +190,10 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
                         songs.remove(position);
                         notifyItemRemoved(position);
                         notifyItemRangeChanged(position, songs.size());
-
-                        // Show success message
-                        new AlertDialog.Builder(view.getContext())
-                            .setTitle("Success")
-                            .setMessage("Song \"" + song.getTitle() + "\" has been deleted successfully.")
-                            .setPositiveButton("OK", null)
-                            .show();
                     });
                 } catch (Exception e) {
-                    // Show error message on main thread
-                    ((android.app.Activity) view.getContext()).runOnUiThread(() -> {
-                        new AlertDialog.Builder(view.getContext())
-                            .setTitle("Error")
-                            .setMessage("Failed to delete song: " + e.getMessage())
-                            .setPositiveButton("OK", null)
-                            .show();
-                    });
+                    // Silent error handling - just log the error
+                    android.util.Log.e("SongAdapter", "Error deleting song: " + e.getMessage());
                 }
             }).start();
         }

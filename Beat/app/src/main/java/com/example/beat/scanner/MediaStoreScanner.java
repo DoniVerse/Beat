@@ -36,9 +36,11 @@ public class MediaStoreScanner {
         newAlbum.name = albumName;
         newAlbum.artistId = artistId;
         newAlbum.releaseYear = year;
-        
+
         try {
-            musicDao.insertAlbum(newAlbum);
+            long albumId = musicDao.insertAlbum(newAlbum);
+            newAlbum.albumId = (int) albumId;
+            Log.d("AlbumInsert", "Created new album: " + albumName + " with ID: " + albumId);
             return newAlbum;
         } catch (Exception e) {
             Log.e("AlbumInsert", "Error inserting album: " + albumName + ", Error: " + e.getMessage());
