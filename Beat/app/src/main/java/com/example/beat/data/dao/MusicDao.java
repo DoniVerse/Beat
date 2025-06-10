@@ -65,8 +65,7 @@ public interface MusicDao {
             "ORDER BY name ASC")
     List<Album> getAlbumsForUser(int userId);
 
-    @Query("SELECT * FROM local_song " +
-            "JOIN album ON local_song.albumId = album.albumId " +
+    @Query("SELECT local_song.* FROM local_song " +
             "WHERE local_song.albumId = :albumId AND local_song.userId = :userId " +
             "ORDER BY local_song.title ASC")
     List<LocalSong> getSongsByAlbumAndUser(int albumId, int userId);

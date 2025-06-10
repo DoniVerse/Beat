@@ -445,48 +445,28 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
                 songArtist.setText("No Artist");
             }
             
-            // Load album art with multiple fallback methods
+            // Load album art with fallback logic (like AlbumAdapter)
             String albumArtUri = song.getAlbumArtUri();
-            android.util.Log.d("SongAdapter", "Loading album art for '" + song.getTitle() + "': " + albumArtUri);
+            android.util.Log.d("SongAdapter", "🔍 Song: '" + song.getTitle() + "', AlbumArtUri: '" + albumArtUri + "'");
 
             if (albumArtUri != null && !albumArtUri.isEmpty()) {
-                // Check if it's a file path (our fallback method)
                 if (albumArtUri.startsWith("file://")) {
-                    // Try to extract embedded album art from the file
+                    // File-based URI - try embedded art extraction
+                    android.util.Log.d("SongAdapter", "🔄 Extracting embedded album art for: " + song.getTitle());
                     loadEmbeddedAlbumArt(song, songArt);
                 } else {
-                    // Try to load from MediaStore content URI
-                    loadMediaStoreAlbumArt(song, albumArtUri, songArt);
+                    // MediaStore URI - use Glide directly
+                    android.util.Log.d("SongAdapter", "✅ Loading MediaStore album art for: " + song.getTitle());
+                    com.bumptech.glide.Glide.with(itemView.getContext())
+                            .load(albumArtUri)
+                            .placeholder(R.drawable.default_album_art)
+                            .error(R.drawable.default_album_art)
+                            .into(songArt);
                 }
             } else {
-                android.util.Log.d("SongAdapter", "No album art URI for '" + song.getTitle() + "', using default");
-                com.bumptech.glide.Glide.with(itemView.getContext())
-                        .load(R.drawable.default_album_art)
-                        .into(songArt);
+                android.util.Log.d("SongAdapter", "❌ No album art URI for '" + song.getTitle() + "', using default");
+                songArt.setImageResource(R.drawable.default_album_art);
             }
-        }
-
-        private void loadMediaStoreAlbumArt(LocalSong song, String albumArtUri, android.widget.ImageView songArt) {
-            com.bumptech.glide.Glide.with(itemView.getContext())
-                    .load(albumArtUri)
-                    .placeholder(R.drawable.default_album_art)
-                    .error(R.drawable.default_album_art)
-                    .listener(new com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable>() {
-                        @Override
-                        public boolean onLoadFailed(com.bumptech.glide.load.engine.GlideException e, Object model, com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target, boolean isFirstResource) {
-                            android.util.Log.e("SongAdapter", "❌ MediaStore album art failed for '" + song.getTitle() + "': " + albumArtUri);
-                            // Try embedded album art as fallback
-                            loadEmbeddedAlbumArt(song, songArt);
-                            return true; // We handle the error ourselves
-                        }
-
-                        @Override
-                        public boolean onResourceReady(android.graphics.drawable.Drawable resource, Object model, com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target, com.bumptech.glide.load.DataSource dataSource, boolean isFirstResource) {
-                            android.util.Log.d("SongAdapter", "✅ Successfully loaded MediaStore album art for '" + song.getTitle() + "'");
-                            return false; // Let Glide handle the success
-                        }
-                    })
-                    .into(songArt);
         }
 
         private void loadEmbeddedAlbumArt(LocalSong song, android.widget.ImageView songArt) {
@@ -514,5 +494,6 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
                 }
             }).start();
         }
+
     }
 }
