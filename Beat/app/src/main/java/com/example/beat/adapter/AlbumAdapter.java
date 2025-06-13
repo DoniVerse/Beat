@@ -400,7 +400,7 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
             LocalSong firstSongWithArt = null;
 
             if (album.songs != null && !album.songs.isEmpty()) {
-                // First, try to find a song with MediaStore album art
+                // First, try to find a song with MediaStore album art (non-file URI)
                 for (LocalSong song : album.songs) {
                     if (song.getAlbumArtUri() != null && !song.getAlbumArtUri().isEmpty()
                         && !song.getAlbumArtUri().startsWith("file://")) {
@@ -410,10 +410,12 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
                     }
                 }
 
-                // If no MediaStore album art found, try embedded extraction from first song
-                if (albumArtUri == null && !album.songs.isEmpty()) {
-                    firstSongWithArt = album.songs.get(0); // Use first song for embedded extraction
-                    android.util.Log.d("AlbumAdapter", "🔄 No MediaStore album art for album '" + album.album.name + "', trying embedded extraction from: " + firstSongWithArt.getTitle());
+                // Always set first song for fallback, regardless of MediaStore URI
+                if (!album.songs.isEmpty()) {
+                    firstSongWithArt = album.songs.get(0);
+                    if (albumArtUri == null) {
+                        android.util.Log.d("AlbumAdapter", "🔄 No MediaStore album art for album '" + album.album.name + "', will try embedded extraction from: " + firstSongWithArt.getTitle());
+                    }
                 }
             }
 

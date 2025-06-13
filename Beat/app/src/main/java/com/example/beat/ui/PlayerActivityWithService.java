@@ -15,6 +15,8 @@ import com.example.beat.service.MusicService;
 import com.example.beat.service.MusicServiceConnection;
 import com.google.android.material.imageview.ShapeableImageView;
 
+import java.util.ArrayList;
+
 public class PlayerActivityWithService extends AppCompatActivity implements MusicServiceConnection.ServiceConnectionListener, com.example.beat.service.MusicService.TrackChangeListener {
 
     private MusicServiceConnection musicServiceConnection;
@@ -138,8 +140,14 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
                 ", Context: " + contextType + ", ID: " + contextId);
 
             if (totalSongs > 1) {
-                // Load playlist from database based on context
-                loadPlaylistFromDatabase(contextType, contextId);
+                // Check if this is an API search context
+                if ("API_SEARCH".equals(contextType)) {
+                    // Load API playlist from intent extras
+                    loadApiPlaylistFromIntent(intent);
+                } else {
+                    // Load playlist from database based on context
+                    loadPlaylistFromDatabase(contextType, contextId);
+                }
             } else {
                 android.util.Log.d("PlayerActivity", "Single song mode");
                 songList = null;
@@ -232,6 +240,41 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
                 android.util.Log.e("PlayerActivity", "Error loading playlist from database", e);
             }
         }).start();
+    }
+
+    // ✅ ADD: Load API playlist from intent extras
+    private void loadApiPlaylistFromIntent(Intent intent) {
+        try {
+            // Get the API playlist data from intent
+            ArrayList<String> streamUrls = intent.getStringArrayListExtra("API_STREAM_URLS");
+            ArrayList<String> titles = intent.getStringArrayListExtra("API_TITLES");
+            ArrayList<String> artists = intent.getStringArrayListExtra("API_ARTISTS");
+            ArrayList<String> albumArts = intent.getStringArrayListExtra("API_ALBUM_ARTS");
+
+            if (streamUrls != null && titles != null && artists != null && albumArts != null) {
+                // Set the playlist arrays
+                songList = streamUrls;
+                titleList = titles;
+                artistList = artists;
+                albumArtList = albumArts;
+
+                android.util.Log.d("PlayerActivity", "Loaded API playlist: " + songList.size() + " tracks");
+            } else {
+                android.util.Log.e("PlayerActivity", "Failed to load API playlist - missing data");
+                // Fallback to single song mode
+                songList = null;
+                titleList = null;
+                artistList = null;
+                albumArtList = null;
+            }
+        } catch (Exception e) {
+            android.util.Log.e("PlayerActivity", "Error loading API playlist from intent", e);
+            // Fallback to single song mode
+            songList = null;
+            titleList = null;
+            artistList = null;
+            albumArtList = null;
+        }
     }
 
     private void setupClickListeners() {

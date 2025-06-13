@@ -172,6 +172,36 @@ public class HomeFragment extends Fragment implements TrackAdapter.OnTrackClickL
             intent.putExtra("artist", track.getArtist() != null ? track.getArtist().getName() : "Unknown Artist");
             intent.putExtra("albumArtUrl", track.getAlbum() != null ? track.getAlbum().getCoverMedium() : "");
             intent.putExtra("streamUrl", track.getPreview());
+
+            // ✅ ADD: Create API playlist context for next/previous functionality
+            List<Track> currentTracks = trackAdapter.getTracks(); // Get current search results
+            if (currentTracks != null && currentTracks.size() > 1) {
+                int position = currentTracks.indexOf(track);
+                intent.putExtra("POSITION", position);
+                intent.putExtra("TOTAL_SONGS", currentTracks.size());
+                intent.putExtra("CONTEXT_TYPE", "API_SEARCH");
+
+                // Convert tracks to serializable arrays for playlist
+                ArrayList<String> streamUrls = new ArrayList<>();
+                ArrayList<String> titles = new ArrayList<>();
+                ArrayList<String> artists = new ArrayList<>();
+                ArrayList<String> albumArts = new ArrayList<>();
+
+                for (Track t : currentTracks) {
+                    streamUrls.add(t.getPreview() != null ? t.getPreview() : "");
+                    titles.add(t.getTitle() != null ? t.getTitle() : "Unknown Track");
+                    artists.add(t.getArtist() != null ? t.getArtist().getName() : "Unknown Artist");
+                    albumArts.add(t.getAlbum() != null ? t.getAlbum().getCoverMedium() : "");
+                }
+
+                intent.putStringArrayListExtra("API_STREAM_URLS", streamUrls);
+                intent.putStringArrayListExtra("API_TITLES", titles);
+                intent.putStringArrayListExtra("API_ARTISTS", artists);
+                intent.putStringArrayListExtra("API_ALBUM_ARTS", albumArts);
+
+                Log.d(TAG, "Created API playlist with " + currentTracks.size() + " tracks, position: " + position);
+            }
+
             startActivity(intent);
         } else {
             Toast.makeText(requireActivity(), "No preview available for this track", Toast.LENGTH_SHORT).show();

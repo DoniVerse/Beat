@@ -1,6 +1,5 @@
 package com.example.beat;
 
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,6 +26,11 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
     public void updateTracks(List<Track> newTracks) {
         this.tracks = newTracks;
         notifyDataSetChanged();
+    }
+
+    // ✅ ADD: Method to get current tracks list
+    public List<Track> getTracks() {
+        return tracks;
     }
 
     @NonNull

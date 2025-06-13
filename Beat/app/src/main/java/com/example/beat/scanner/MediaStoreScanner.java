@@ -111,12 +111,24 @@ public class MediaStoreScanner {
                 // Get album art URI - try multiple methods
                 String albumArtUri = null;
 
-                // Method 1: Try MediaStore album art (most reliable)
+                // Method 1: Try MediaStore album art (validate before using)
                 if (albumId > 0) {
                     Uri albumArtContentUri = ContentUris.withAppendedId(
                         Uri.parse("content://media/external/audio/albumart"), albumId);
-                    albumArtUri = albumArtContentUri.toString();
-                    Log.d("AlbumArt", "✅ Found MediaStore album art for '" + title + "' (Album ID: " + albumId + "): " + albumArtUri);
+
+                    // Validate that the URI actually points to an existing resource
+                    try {
+                        java.io.InputStream inputStream = context.getContentResolver().openInputStream(albumArtContentUri);
+                        if (inputStream != null) {
+                            inputStream.close();
+                            albumArtUri = albumArtContentUri.toString();
+                            Log.d("AlbumArt", "✅ Validated MediaStore album art for '" + title + "' (Album ID: " + albumId + "): " + albumArtUri);
+                        } else {
+                            Log.d("AlbumArt", "❌ MediaStore album art URI invalid for '" + title + "' (Album ID: " + albumId + ")");
+                        }
+                    } catch (Exception e) {
+                        Log.d("AlbumArt", "❌ MediaStore album art not accessible for '" + title + "' (Album ID: " + albumId + "): " + e.getMessage());
+                    }
                 }
 
                 // Method 2: If no MediaStore album art, try to use file path for embedded art extraction

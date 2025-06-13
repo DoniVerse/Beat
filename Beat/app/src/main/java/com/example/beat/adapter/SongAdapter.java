@@ -423,23 +423,44 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
             String albumArtUri = song.getAlbumArtUri();
             android.util.Log.d("SongAdapter", "🔍 Song: '" + song.getTitle() + "', AlbumArtUri: '" + albumArtUri + "'");
 
+            // Test URI accessibility for debugging
+            if (albumArtUri != null && !albumArtUri.isEmpty() && !albumArtUri.startsWith("file://")) {
+                testUriAccessibility(albumArtUri, song.getTitle());
+            }
+
             if (albumArtUri != null && !albumArtUri.isEmpty()) {
                 if (albumArtUri.startsWith("file://")) {
                     // File-based URI - try embedded art extraction
                     android.util.Log.d("SongAdapter", "🔄 Extracting embedded album art for: " + song.getTitle());
                     loadEmbeddedAlbumArt(song, songArt);
                 } else {
-                    // MediaStore URI - use Glide directly
+                    // MediaStore URI - use Glide with fallback to embedded extraction
                     android.util.Log.d("SongAdapter", "✅ Loading MediaStore album art for: " + song.getTitle());
                     com.bumptech.glide.Glide.with(itemView.getContext())
                             .load(albumArtUri)
                             .placeholder(R.drawable.default_album_art)
                             .error(R.drawable.default_album_art)
+                            .listener(new com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable>() {
+                                @Override
+                                public boolean onLoadFailed(com.bumptech.glide.load.engine.GlideException e, Object model, com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target, boolean isFirstResource) {
+                                    android.util.Log.e("SongAdapter", "❌ MediaStore album art failed for '" + song.getTitle() + "', trying embedded extraction");
+                                    // Try embedded extraction as fallback
+                                    loadEmbeddedAlbumArt(song, songArt);
+                                    return true; // We handle the error
+                                }
+
+                                @Override
+                                public boolean onResourceReady(android.graphics.drawable.Drawable resource, Object model, com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target, com.bumptech.glide.load.DataSource dataSource, boolean isFirstResource) {
+                                    android.util.Log.d("SongAdapter", "✅ Successfully loaded MediaStore album art for '" + song.getTitle() + "'");
+                                    return false;
+                                }
+                            })
                             .into(songArt);
                 }
             } else {
-                android.util.Log.d("SongAdapter", "❌ No album art URI for '" + song.getTitle() + "', using default");
-                songArt.setImageResource(R.drawable.default_album_art);
+                android.util.Log.d("SongAdapter", "❌ No album art URI for '" + song.getTitle() + "', trying embedded extraction");
+                // No URI available, try embedded extraction as last resort
+                loadEmbeddedAlbumArt(song, songArt);
             }
         }
 
@@ -465,6 +486,22 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
                     ((android.app.Activity) itemView.getContext()).runOnUiThread(() -> {
                         songArt.setImageResource(R.drawable.default_album_art);
                     });
+                }
+            }).start();
+        }
+
+        private void testUriAccessibility(String uri, String songTitle) {
+            new Thread(() -> {
+                try {
+                    java.io.InputStream inputStream = itemView.getContext().getContentResolver().openInputStream(android.net.Uri.parse(uri));
+                    if (inputStream != null) {
+                        inputStream.close();
+                        android.util.Log.d("SongAdapter", "✅ URI accessible for '" + songTitle + "': " + uri);
+                    } else {
+                        android.util.Log.e("SongAdapter", "❌ URI not accessible (null stream) for '" + songTitle + "': " + uri);
+                    }
+                } catch (Exception e) {
+                    android.util.Log.e("SongAdapter", "❌ URI test failed for '" + songTitle + "': " + uri + " - " + e.getMessage());
                 }
             }).start();
         }
