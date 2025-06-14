@@ -126,7 +126,9 @@ public class MusicService extends Service implements PlaylistManager.PlaylistLis
                 mp.start();
                 isPlaying = true;
                 showNotification();
-                Log.d(TAG, "Music started playing: " + currentTrackTitle);
+                Log.d(TAG, "✅ Music started playing: " + currentTrackTitle +
+                    ", isPlaying flag set to: " + isPlaying +
+                    ", mediaPlayer.isPlaying(): " + mp.isPlaying());
             });
 
             mediaPlayer.setOnCompletionListener(mp -> {
@@ -177,7 +179,25 @@ public class MusicService extends Service implements PlaylistManager.PlaylistLis
     }
 
     public boolean isPlaying() {
-        return isPlaying && mediaPlayer != null && mediaPlayer.isPlaying();
+        boolean internalFlag = isPlaying;
+        boolean mediaPlayerPlaying = mediaPlayer != null && mediaPlayer.isPlaying();
+        boolean result = internalFlag && mediaPlayer != null && mediaPlayerPlaying;
+
+        Log.d(TAG, "isPlaying() check - internalFlag: " + internalFlag +
+            ", mediaPlayer != null: " + (mediaPlayer != null) +
+            ", mediaPlayer.isPlaying(): " + mediaPlayerPlaying +
+            ", final result: " + result);
+
+        // ✅ FIX: For streaming URLs, trust the internal flag more during initial buffering
+        if (internalFlag && mediaPlayer != null && !mediaPlayerPlaying) {
+            // Check if we're in the initial buffering phase for streaming
+            if (currentStreamUrl != null && currentStreamUrl.startsWith("http")) {
+                Log.d(TAG, "Streaming URL detected, trusting internal flag during buffering");
+                return true; // Trust internal flag for streaming during initial phase
+            }
+        }
+
+        return result;
     }
 
     public int getCurrentPosition() {

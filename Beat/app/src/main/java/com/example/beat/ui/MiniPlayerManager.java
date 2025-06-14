@@ -239,17 +239,32 @@ public class MiniPlayerManager implements MusicServiceConnection.ServiceConnecti
 
     private void updatePlayPauseButton() {
         if (miniPlayPauseButton == null) return;
-        
-        if (musicServiceConnection != null && musicServiceConnection.isPlaying()) {
+
+        boolean isPlaying = musicServiceConnection != null && musicServiceConnection.isPlaying();
+        Log.d("MiniPlayerManager", "updatePlayPauseButton - isPlaying: " + isPlaying +
+            ", currentTitle: " + currentTitle);
+
+        if (isPlaying) {
+            Log.d("MiniPlayerManager", "Setting mini pause icon - music is playing");
             miniPlayPauseButton.setImageResource(R.drawable.ic_pause);
         } else {
+            Log.d("MiniPlayerManager", "Setting mini play icon - music is not playing");
             miniPlayPauseButton.setImageResource(R.drawable.ic_play_arrow);
         }
     }
 
     @Override
     public void onServiceConnected(MusicService service) {
-        updatePlayPauseButton();
+        // ✅ FIX: Add delay to ensure proper state sync for mini player
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            Log.d("MiniPlayerManager", "Service connected - updating mini player button state");
+            updatePlayPauseButton();
+
+            // Additional check after another delay
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                updatePlayPauseButton();
+            }, 1000);
+        }, 500);
     }
 
     @Override

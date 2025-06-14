@@ -346,12 +346,22 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
                 android.util.Log.d("PlayerActivity", "Starting new playback");
                 try {
                     musicServiceConnection.playMusic(streamUrl, trackTitle, artistName, albumArtUrl);
-                    // Don't set button state immediately - let updatePlayPauseButton handle it
-                    // Add a small delay to allow service to start playing
+
+                    // ✅ FIX: Increase delay and add multiple checks for proper state sync
                     handler.postDelayed(() -> {
+                        android.util.Log.d("PlayerActivity", "First button update check - isPlaying: " +
+                            (musicServiceConnection != null ? musicServiceConnection.isPlaying() : "null"));
                         updatePlayPauseButton();
                         startSeekBarUpdate();
-                    }, 500); // 500ms delay to allow service to start
+
+                        // ✅ ADD: Second check after another delay to ensure proper sync
+                        handler.postDelayed(() -> {
+                            android.util.Log.d("PlayerActivity", "Second button update check - isPlaying: " +
+                                (musicServiceConnection != null ? musicServiceConnection.isPlaying() : "null"));
+                            updatePlayPauseButton();
+                        }, 1000); // Additional 1 second delay for final sync
+
+                    }, 800); // Increased initial delay to 800ms
                 } catch (Exception e) {
                     android.util.Log.e("PlayerActivity", "Error starting playback", e);
                     android.widget.Toast.makeText(this, "Error playing song: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
@@ -392,15 +402,22 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
 
     private void updatePlayPauseButton() {
         if (musicServiceConnection != null) {
-            if (musicServiceConnection.isPlaying()) {
+            boolean isPlaying = musicServiceConnection.isPlaying();
+            android.util.Log.d("PlayerActivity", "updatePlayPauseButton - isPlaying: " + isPlaying +
+                ", trackTitle: " + trackTitle);
+
+            if (isPlaying) {
+                android.util.Log.d("PlayerActivity", "Setting pause icon - music is playing");
                 playPauseButton.setImageResource(R.drawable.ic_pause);
                 startSeekBarUpdate();
             } else {
+                android.util.Log.d("PlayerActivity", "Setting play icon - music is not playing");
                 playPauseButton.setImageResource(R.drawable.ic_play);
                 stopSeekBarUpdate();
             }
         } else {
             // If service is not connected, show play icon
+            android.util.Log.d("PlayerActivity", "Service not connected - setting play icon");
             playPauseButton.setImageResource(R.drawable.ic_play);
             stopSeekBarUpdate();
         }
