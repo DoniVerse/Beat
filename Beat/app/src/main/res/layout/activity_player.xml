@@ -143,16 +143,6 @@
             app:tint="@color/text_secondary" />
 
         <ImageButton
-            android:id="@+id/repeatButton"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_marginHorizontal="24dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/repeat_button_desc"
-            android:src="@drawable/ic_repeat"
-            app:tint="@color/text_secondary" />
-
-        <ImageButton
             android:id="@+id/addToPlaylistButton"
             android:layout_width="56dp"
             android:layout_height="56dp"

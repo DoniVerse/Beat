@@ -18,7 +18,7 @@ public class PlaylistManager {
     
     // Player state
     private boolean isShuffleEnabled = false;
-    private boolean isRepeatEnabled = false;
+
     
     // Current track info
     private String currentStreamUrl = "";
@@ -77,7 +77,7 @@ public class PlaylistManager {
     }
     
     public boolean canGoNext() {
-        return hasPlaylist() || isRepeatEnabled;
+        return hasPlaylist();
     }
     
     public boolean canGoPrevious() {
@@ -88,10 +88,6 @@ public class PlaylistManager {
         Log.d(TAG, "playNext called. hasPlaylist: " + hasPlaylist());
         
         if (!hasPlaylist()) {
-            // No playlist, just restart current song if repeat is enabled
-            if (isRepeatEnabled && listener != null) {
-                listener.onTrackChanged(currentStreamUrl, currentTitle, currentArtist, currentAlbumArt);
-            }
             return;
         }
         
@@ -160,11 +156,7 @@ public class PlaylistManager {
         Log.d(TAG, "Shuffle " + (enabled ? "enabled" : "disabled"));
     }
     
-    public boolean isRepeatEnabled() { return isRepeatEnabled; }
-    public void setRepeatEnabled(boolean enabled) { 
-        this.isRepeatEnabled = enabled;
-        Log.d(TAG, "Repeat " + (enabled ? "enabled" : "disabled"));
-    }
+
     
     public int getPlaylistSize() {
         return hasPlaylist() ? songList.size() : 0;

@@ -134,7 +134,7 @@ public class MusicService extends Service implements PlaylistManager.PlaylistLis
             mediaPlayer.setOnCompletionListener(mp -> {
                 isPlaying = false;
                 android.util.Log.d(TAG, "🎵 SONG COMPLETED! 🎵 - Title: " + currentTrackTitle);
-                android.util.Log.d(TAG, "🔁 About to check repeat functionality...");
+                android.util.Log.d(TAG, "🔁 About to handle song completion...");
                 handleSongCompletion();
             });
 
@@ -272,33 +272,13 @@ public class MusicService extends Service implements PlaylistManager.PlaylistLis
     }
 
     private void handleSongCompletion() {
-        android.util.Log.d(TAG, "Song completed, handling repeat/next");
+        android.util.Log.d(TAG, "Song completed, going to next song");
         android.util.Log.d(TAG, "PlaylistManager null check: " + (playlistManager == null));
 
         if (playlistManager != null) {
-            boolean repeatEnabled = playlistManager.isRepeatEnabled();
-            android.util.Log.d(TAG, "Repeat enabled: " + repeatEnabled);
-
-            if (repeatEnabled) {
-                // Repeat current song - simple approach
-                android.util.Log.d(TAG, "Repeat enabled - restarting current song: " + currentTrackTitle);
-                if (mediaPlayer != null) {
-                    try {
-                        // Simple restart: just call playMusic again with same parameters
-                        android.util.Log.d(TAG, "Restarting song for repeat");
-                        playMusic(currentStreamUrl, currentTrackTitle, currentArtist, currentAlbumArt);
-
-                    } catch (Exception e) {
-                        android.util.Log.e(TAG, "Error restarting song for repeat", e);
-                        // Fallback: try to go to next song
-                        playNext();
-                    }
-                }
-            } else {
-                // Go to next song
-                android.util.Log.d(TAG, "Repeat disabled - going to next song");
-                playNext();
-            }
+            // Go to next song
+            android.util.Log.d(TAG, "Going to next song");
+            playNext();
         } else {
             android.util.Log.w(TAG, "PlaylistManager is null, cannot handle song completion");
         }

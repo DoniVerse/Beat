@@ -59,7 +59,7 @@ public class PlayerActivity extends AppCompatActivity {
         previousButton = findViewById(R.id.previousButton);
         nextButton = findViewById(R.id.nextButton);
         shuffleButton = findViewById(R.id.shuffleButton);
-        repeatButton = findViewById(R.id.repeatButton);
+
         backButton = findViewById(R.id.backButton);
     }
 

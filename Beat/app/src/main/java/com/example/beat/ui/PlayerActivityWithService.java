@@ -31,7 +31,7 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
     private ImageButton shuffleButton;
     private ImageButton previousButton;
     private ImageButton nextButton;
-    private ImageButton repeatButton;
+
     private ImageButton addToPlaylistButton;
 
     
@@ -84,7 +84,7 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
 
         // Initialize button states
         updateShuffleButton();
-        updateRepeatButton();
+
 
         // Initialize music service connection
         musicServiceConnection = new MusicServiceConnection(this);
@@ -106,7 +106,7 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
         shuffleButton = findViewById(R.id.shuffleButton);
         previousButton = findViewById(R.id.previousButton);
         nextButton = findViewById(R.id.nextButton);
-        repeatButton = findViewById(R.id.repeatButton);
+
         addToPlaylistButton = findViewById(R.id.addToPlaylistButton);
 
         // Initialize play/pause button to show play icon
@@ -285,7 +285,7 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
         shuffleButton.setOnClickListener(v -> toggleShuffle());
         previousButton.setOnClickListener(v -> playPrevious());
         nextButton.setOnClickListener(v -> playNext());
-        repeatButton.setOnClickListener(v -> toggleRepeat());
+
         addToPlaylistButton.setOnClickListener(v -> showAddToPlaylistDialog());
 
 
@@ -425,7 +425,7 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
 
     // Player state
     private boolean isShuffleEnabled = false;
-    private boolean isRepeatEnabled = false;
+
 
     // Control methods for the new buttons
     private void toggleShuffle() {
@@ -485,7 +485,7 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
 
             playlistManager.setPlaylist(songList, titleList, artistList, albumArtList, currentPosition);
             playlistManager.setShuffleEnabled(isShuffleEnabled);
-            playlistManager.setRepeatEnabled(isRepeatEnabled);
+
 
             android.util.Log.d("PlayerActivity", "Playlist setup in PlaylistManager: " +
                 songList.size() + " songs, position: " + currentPosition);
@@ -583,20 +583,7 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
         }
     }
 
-    private void toggleRepeat() {
-        isRepeatEnabled = !isRepeatEnabled;
-        updateRepeatButton();
 
-        // Update PlaylistManager immediately
-        com.example.beat.service.PlaylistManager playlistManager =
-            com.example.beat.service.PlaylistManager.getInstance();
-        playlistManager.setRepeatEnabled(isRepeatEnabled);
-
-        android.util.Log.d("PlayerActivity", "Repeat toggled: " + isRepeatEnabled);
-        android.widget.Toast.makeText(this,
-            isRepeatEnabled ? "Repeat ON" : "Repeat OFF",
-            android.widget.Toast.LENGTH_SHORT).show();
-    }
 
     private void updateShuffleButton() {
         if (shuffleButton != null) {
@@ -604,11 +591,7 @@ public class PlayerActivityWithService extends AppCompatActivity implements Musi
         }
     }
 
-    private void updateRepeatButton() {
-        if (repeatButton != null) {
-            repeatButton.setAlpha(isRepeatEnabled ? 1.0f : 0.5f);
-        }
-    }
+
 
     private void showAddToPlaylistDialog() {
         if (streamUrl == null) return;

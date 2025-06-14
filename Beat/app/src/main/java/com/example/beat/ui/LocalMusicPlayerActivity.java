@@ -84,7 +84,7 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         prevBtn = findViewById(R.id.prev_btn);
         nextBtn = findViewById(R.id.next_btn);
         shuffleBtn = findViewById(R.id.shuffle_btn);
-        repeatBtn = findViewById(R.id.repeat_btn);
+
         addToPlaylistBtn = findViewById(R.id.add_to_playlist_btn);
 
         Intent intent = getIntent();
@@ -104,7 +104,7 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         nextBtn.setOnClickListener(v -> playNext());
         playPauseBtn.setOnClickListener(v -> togglePlayPause());
         shuffleBtn.setOnClickListener(v -> toggleShuffle());
-        repeatBtn.setOnClickListener(v -> toggleRepeat());
+
         
         addToPlaylistBtn.setOnClickListener(v -> showAddToPlaylistDialog());
 
@@ -256,10 +256,7 @@ public class LocalMusicPlayerActivity extends AppCompatActivity {
         shuffleBtn.setImageResource(isShuffle ? R.drawable.ic_shuffle_on : R.drawable.ic_shuffle);
     }
 
-    private void toggleRepeat() {
-        isRepeat = !isRepeat;
-        repeatBtn.setImageResource(isRepeat ? R.drawable.ic_repeat_on : R.drawable.ic_repeat);
-    }
+
 
     private void showAddToPlaylistDialog() {
         if (currentSong == null) return;

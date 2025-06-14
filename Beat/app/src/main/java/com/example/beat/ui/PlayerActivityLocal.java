@@ -37,7 +37,7 @@ public class PlayerActivityLocal extends AppCompatActivity {
         nextBtn = findViewById(R.id.next_btn);
         prevBtn = findViewById(R.id.prev_btn);
         shuffleBtn = findViewById(R.id.shuffle_btn);
-        repeatBtn = findViewById(R.id.repeat_btn);
+
         seekBar = findViewById(R.id.seekBar);
 
         Intent intent = getIntent();
@@ -49,7 +49,7 @@ public class PlayerActivityLocal extends AppCompatActivity {
         nextBtn = findViewById(R.id.next_btn);
         prevBtn = findViewById(R.id.prev_btn);
         shuffleBtn = findViewById(R.id.shuffle_btn);
-        repeatBtn = findViewById(R.id.repeat_btn);
+
         seekBar = findViewById(R.id.seekBar);
 
         songs = (List<LocalSong>) getIntent().getSerializableExtra("song_list");

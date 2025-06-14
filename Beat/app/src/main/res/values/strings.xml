@@ -10,5 +10,5 @@
     <string name="previous_button_desc">Previous Track</string>
     <string name="play_pause_button_desc">Play or Pause</string>
     <string name="next_button_desc">Next Track</string>
-    <string name="repeat_button_desc">Repeat</string>
+
     </resources>
